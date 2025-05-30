@@ -29,34 +29,45 @@ class LearnableOrthogonalProjection(nn.Module):
             self.retraction = partial(self.retraction, sharp_iters=sharp_iters)
         self.eta = eta
 
+        # hook to convert Euclid grad → Riemannian grad
+        self.W.register_hook(self._orthogonalize_grad)
+
     def forward(self, x):
-        # Lazy initialization of W if not provided during __init__
-        if self.W is None:
-            dim = x.shape[-1]
-            self.W = nn.Parameter(torch.eye(dim, device=x.device, dtype=x.dtype))
-        return x @ self.W
+        B, C, H, W = x.shape
+        flat = x.permute(0, 2, 3, 1).reshape(-1, C)  # (B*H*W, C)
+        out = flat @ self.W.t()  # use Wᵀ as skip
+        return out.reshape(B, H, W, C).permute(0, 3, 1, 2)
+
+    def _orthogonalize_grad(self, grad_W):
+        # G_riem = G - W sym(Wᵀ G)
+        WTg = self.W.t() @ grad_W
+        sym = (WTg + WTg.t()) * 0.5
+        return grad_W - self.W @ sym
 
     def step(self, grad: torch.Tensor):
         with torch.no_grad():
             self.W.copy_(self.retraction(self.W, grad, self.eta))
 
 
-class ResNetLearnableOrthogonal(ResNetBaseline):
-    """Learnable orthogonal matrices with retraction after each update."""
+from .patch import patch_resnet_skips
+import torch.nn as nn
+from torchvision.models.resnet import ResNet, BasicBlock, Bottleneck
 
+
+class ResNetLearnableOrthogonal(ResNet):
     def __init__(
-        self, num_classes: int = 10, retraction: str = "cayley", sharp_iters: int = 8
+        self,
+        block=BasicBlock,
+        layers=[2, 2, 2, 2],
+        num_classes=1000,
+        retraction="cayley",
+        sharp_iters=8,
     ):
-        super().__init__(num_classes)
-        self.ortho_modules = []
-        for name, module in self.backbone.named_modules():
-            if isinstance(module, nn.Identity):
-                # Use lazy initialization by setting dim to None.
-                op = LearnableOrthogonalProjection(
-                    dim=None, retraction=retraction, sharp_iters=sharp_iters
-                )
-                setattr(self.backbone, name, op)
-                self.ortho_modules.append(op)
+        super().__init__(block, layers, num_classes=num_classes)
+        # attach a learnable orthogonal W to every plain skip
+        self.ortho_modules = patch_resnet_skips(
+            self, mode="learnable", retraction=retraction, sharp_iters=sharp_iters
+        )
 
     def orth_error(self):
         return sum(

@@ -125,6 +125,11 @@ def train_epoch(model, loader, criterion, optimizer, device, epoch):
         loss = criterion(outputs, targets)
         loss.backward()
         optimizer.step()
+        if hasattr(model, "ortho_modules"):
+            for mod in model.ortho_modules:
+                # only LearnableOrthogonalProjection has .step()
+                if hasattr(mod, "step"):
+                    mod.step()  # uses stored grad to retract W back onto O(n)
 
         # Update meters
         loss_meter.update(loss.item(), images.size(0))
