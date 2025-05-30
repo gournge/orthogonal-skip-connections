@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orthogonal-resnet"
+version = "0.1.0"
+description = "Research codebase exploring evolving orthogonal skip-connections in ResNets."
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.9"
+
+dependencies = [
+  # CUDA 11.8 builds
+  "torch==2.6.0",
+  "torchvision==0.21.0",
+  "torchaudio==2.6.0",
+  "numpy",
+  "matplotlib",
+  "tqdm",
+  "wandb",
+  "pyyaml",
+]
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.uv]
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = [
+  "models", "models.*",
+  "train",  "train.*",
+  "utils",  "utils.*",
+  "experiments", "experiments.*"
+]
+
+[[tool.uv.index]]
+name     = "pytorch"
+url      = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+
+[tool.uv.sources]
+torch       = { index = "pytorch" }
+torchvision = { index = "pytorch" }
+torchaudio  = { index = "pytorch" }
