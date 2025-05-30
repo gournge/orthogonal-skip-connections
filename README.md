@@ -45,7 +45,11 @@ uv lock
 uv pip sync
 
 # 4. run training
-uv run python -m train.train --variant baseline --dataset cifar10
+uv run python -m train.train --variant resnet34 --dataset cifar10
+
+# 5. run training on an orthogonal model
+uv run python -m train.train --variant learnable_ortho --dataset cifar10
+
 ```
 
 *Tip*: use `uv add <package>` to pin new libs, and `uv lock`/`uv pip sync` for fully‑reproducible environments.

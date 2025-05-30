@@ -5,7 +5,6 @@ from functools import partial
 import torch
 import torch.nn as nn
 from typing import Optional
-from .resnet_baseline import ResNetBaseline
 from utils.orthogonal import get_retraction, orth_error, requires_sharp_iters
 
 
@@ -33,10 +32,17 @@ class LearnableOrthogonalProjection(nn.Module):
         self.W.register_hook(self._orthogonalize_grad)
 
     def forward(self, x):
-        B, C, H, W = x.shape
-        flat = x.permute(0, 2, 3, 1).reshape(-1, C)  # (B*H*W, C)
-        out = flat @ self.W.t()  # use Wᵀ as skip
-        return out.reshape(B, H, W, C).permute(0, 3, 1, 2)
+        # case A: feature map 4-D ⇒ apply Wᵀ over channels
+        if x.dim() == 4:
+            B, C, H, W = x.shape
+            x_flat = x.permute(0, 2, 3, 1).reshape(-1, C)
+            out = x_flat @ self.W.T
+            return out.reshape(B, H, W, C).permute(0, 3, 1, 2)
+        # case B: already flattened 2-D feature vectors
+        elif x.dim() == 2:
+            return x @ self.W.T
+        else:
+            raise ValueError(f"OrthProj: expected 2D or 4D tensor, got {x.dim()}D")
 
     def _orthogonalize_grad(self, grad_W):
         # G_riem = G - W sym(Wᵀ G)
@@ -50,26 +56,13 @@ class LearnableOrthogonalProjection(nn.Module):
 
 
 from .patch import patch_resnet_skips
-import torch.nn as nn
-from torchvision.models.resnet import ResNet, BasicBlock, Bottleneck
+from .resnet_baseline import ResNetBaseline
 
 
-class ResNetLearnableOrthogonal(ResNet):
-    def __init__(
-        self,
-        block=BasicBlock,
-        layers=[2, 2, 2, 2],
-        num_classes=1000,
-        retraction="cayley",
-        sharp_iters=8,
-    ):
-        super().__init__(block, layers, num_classes=num_classes)
-        # attach a learnable orthogonal W to every plain skip
+class ResNetLearnableOrthogonal(ResNetBaseline):
+    def __init__(self, num_classes=10, retraction="cayley", sharp_iters=8):
+        super().__init__(num_classes)
+        # patch every plain skip with its own W of the correct size
         self.ortho_modules = patch_resnet_skips(
-            self, mode="learnable", retraction=retraction, sharp_iters=sharp_iters
+            self.backbone, retraction=retraction, sharp_iters=sharp_iters
         )
-
-    def orth_error(self):
-        return sum(
-            orth_error(m.W) for m in self.ortho_modules if m.W is not None
-        ) / len(self.ortho_modules)

@@ -17,6 +17,11 @@ _RETRACTIONS: Dict[str, Callable[[torch.Tensor, torch.Tensor, float], torch.Tens
 )
 
 
+def get_retraction_names() -> list[str]:
+    """Get names of all registered retractions."""
+    return list(_RETRACTIONS.keys())
+
+
 def register_retraction(
     name: str, fn: Callable[[torch.Tensor, torch.Tensor, float], torch.Tensor]
 ):

@@ -8,7 +8,7 @@ import os
 
 from utils.data import cifar10, cifar100
 from utils.metrics import AverageMeter, accuracy
-from utils.orthogonal import orth_error
+from utils.orthogonal import orth_error, get_retraction_names
 from models import get_model
 
 
@@ -23,12 +23,14 @@ def parse_args():
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--mixup", type=float, default=0.0)
     parser.add_argument("--label_smoothing", type=float, default=0.0)
-    parser.add_argument("--retraction", default="cayley")
+    parser.add_argument(
+        "--retraction", default="steepest_manifold", choices=get_retraction_names()
+    )
     parser.add_argument(
         "--sharp_iters",
         type=int,
-        default=8,
-        help="Number of iterations for sharp_operator",
+        default=5,
+        help="Number of iterations for sharp_operator. Value due to https://arxiv.org/html/2502.16982v1",
     )
     return parser.parse_args()
 
@@ -128,8 +130,9 @@ def train_epoch(model, loader, criterion, optimizer, device, epoch):
         if hasattr(model, "ortho_modules"):
             for mod in model.ortho_modules:
                 # only LearnableOrthogonalProjection has .step()
-                if hasattr(mod, "step"):
-                    mod.step()  # uses stored grad to retract W back onto O(n)
+                # only retract when we actually have a W-gradient
+                if hasattr(mod, "W") and mod.W.grad is not None:
+                    mod.step(mod.W.grad)
 
         # Update meters
         loss_meter.update(loss.item(), images.size(0))
