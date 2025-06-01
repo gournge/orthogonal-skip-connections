@@ -1,164 +1,89 @@
-import argparse
-import torch
-import torch.nn as nn
-import torch.optim as optim
+"""YAML-first training script (hydra-lite doc)."""
+import argparse, yaml, time, wandb, torch, torch.nn.functional as F
+from torch.optim import SGD
 from torch.optim.lr_scheduler import CosineAnnealingLR
-import wandb
-import os
+from pathlib import Path
+from ..models import resnet_baseline, orthogonal_resnet
+from ..utils.datasets import cifar
+from ..utils.metrics import orth_error
 
-from utils.data import cifar10, cifar100
-from utils.metrics import AverageMeter, accuracy
-from utils.orthogonal import orth_error, get_retraction_names
-from models import get_model
+def parse():
+    p = argparse.ArgumentParser()
+    p.add_argument("--config", type=str, default=str(Path(__file__).with_suffix(".yaml")))
+    p.add_argument("model", default="baseline", choices=["baseline", "orth", "learnable_orth", "random"])
+    p.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100"])
+    return p.parse_args()
 
+def make_model(model: str, num_classes: int):
+    if model == "baseline":
+        return resnet_baseline.resnet18(num_classes)
+    if model == "orth":
+        return orthogonal_resnet.OrthResNet([2, 2, 2, 2], num_classes, skip_profile="orth")
+    if model == "learnable_orth":
+        return orthogonal_resnet.OrthResNet([2, 2, 2, 2], num_classes, skip_profile="learnable_orth")
+    if model == "random":
+        return orthogonal_resnet.OrthResNet([2, 2, 2, 2], num_classes, skip_profile="random")
+    raise ValueError(model)
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--variant", default="baseline")
-    parser.add_argument("--dataset", default="cifar10")
-    parser.add_argument("--epochs", type=int, default=200)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--logging_steps", type=int, default=10)
-    parser.add_argument("--lr", type=float, default=0.1)
-    parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument("--mixup", type=float, default=0.0)
-    parser.add_argument("--label_smoothing", type=float, default=0.0)
-    parser.add_argument(
-        "--retraction", default="steepest_manifold", choices=get_retraction_names()
-    )
-    parser.add_argument(
-        "--sharp_iters",
-        type=int,
-        default=5,
-        help="Number of iterations for sharp_operator. Value due to https://arxiv.org/html/2502.16982v1",
-    )
-    return parser.parse_args()
+def train_epoch(model, loader, opt, device):
+    model.train()
+    total, correct, loss_accum = 0, 0, 0.0
+    for x, y in loader:
+        x, y = x.to(device), y.to(device)
+        opt.zero_grad()
+        logits = model(x)
+        loss = F.cross_entropy(logits, y, label_smoothing=0.1)
+        loss.backward()
+        opt.step()
+        total += y.size(0)
+        correct += (logits.argmax(1) == y).sum().item()
+        loss_accum += loss.item() * y.size(0)
+    return loss_accum / total, correct / total
 
+def evaluate(model, loader, device):
+    model.eval()
+    total, correct, loss_accum = 0, 0, 0.0
+    with torch.no_grad():
+        for x, y in loader:
+            x, y = x.to(device), y.to(device)
+            logits = model(x)
+            loss = F.cross_entropy(logits, y)
+            total += y.size(0)
+            correct += (logits.argmax(1) == y).sum().item()
+            loss_accum += loss.item() * y.size(0)
+    return loss_accum / total, correct / total
 
 def main():
-    args = parse_args()
-    wandb.init(project="orthogonal-resnet", config=vars(args))
+    cfg = yaml.safe_load(Path(parse().config).read_text())
+    args = parse()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    print("Using device:", device)
+    train_dl, test_dl = cifar(cifar100=args.dataset == "cifar100")
+    model = make_model(args.model, num_classes=100 if args.dataset == "cifar100" else 10).to(device)
 
-    # Get number of classes
-    num_classes = 10 if args.dataset == "cifar10" else 100
-    model = get_model(
-        args.variant,
-        num_classes=num_classes,
-        retraction=args.retraction,
-        sharp_iters=args.sharp_iters,
-    ).to(device)
+    opt = SGD(model.parameters(), lr=cfg["lr"], momentum=0.9, weight_decay=5e-4)
+    sched = CosineAnnealingLR(opt, T_max=cfg["epochs"])
 
-    print(f"Using model: {args.variant} with {num_classes} classes")
-    # print number of parameters
-    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Model has {num_params / 1e6:.2f}M trainable parameters")
+    wandb.init(project="orthagonal-resnet", config={**cfg, **vars(args)})
 
-    # Watch model parameters and gradients
-    wandb.watch(model, log="all", log_freq=args.logging_steps)
+    for epoch in range(cfg["epochs"]):
+        t0 = time.time()
+        train_loss, train_acc = train_epoch(model, train_dl, opt, device)
+        test_loss, test_acc = evaluate(model, test_dl, device)
+        ortho_dev = sum(p.orth_error.item() for p in model.modules() if hasattr(p, "orth_error"))
+        wandb.log({
+            "train/loss": train_loss,
+            "train/acc": train_acc,
+            "test/loss": test_loss,
+            "test/acc": test_acc,
+            "orth/deviation": ortho_dev,
+            "lr": sched.get_last_lr()[0],
+            "epoch": epoch,
+        })
+        sched.step()
+        print(f"[E{epoch:03d}] acc={test_acc*100:.2f}% • ortho={ortho_dev:.3e} • {time.time()-t0:.1f}s")
 
-    criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
-    optimizer = optim.SGD(
-        model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=5e-4
-    )
-    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
-
-    # Data loaders
-    print("Loading dataset...")
-    train_loader = (
-        cifar10(batch_size=args.batch_size)
-        if args.dataset == "cifar10"
-        else cifar100(batch_size=args.batch_size)
-    )
-    print(f"Loaded {len(train_loader.dataset)} training samples.")
-    print("Creating validation loader...")
-    val_loader = (
-        cifar10(train=False, batch_size=args.batch_size)
-        if args.dataset == "cifar10"
-        else cifar100(train=False, batch_size=args.batch_size)
-    )
-    print(f"Loaded {len(val_loader.dataset)} validation samples.")
-
-    best_acc = 0.0
-    for epoch in range(args.epochs):
-        print(f"Epoch {epoch + 1}/{args.epochs}")
-        train_loss, train_acc = train_epoch(
-            model, train_loader, criterion, optimizer, device, epoch
-        )
-        print(f"\tTrain Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
-        print("\tValidating...")
-        val_loss, val_acc = validate(model, val_loader, criterion, device)
-        print(f"\tVal Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
-        scheduler.step()
-
-        # Log metrics to W&B
-        logs = {
-            "train_loss": train_loss,
-            "train_acc": train_acc,
-            "val_loss": val_loss,
-            "val_acc": val_acc,
-            "lr": scheduler.get_last_lr()[0],
-        }
-        # Log orthogonality error if available
-        if hasattr(model, "orth_error"):
-            logs["orth_error"] = model.orth_error()
-        wandb.log(logs)
-
-        # Save best model
-        if val_acc > best_acc:
-            print("\tNew best model found! Saving...")
-            best_acc = val_acc
-            torch.save(model.state_dict(), os.path.join(wandb.run.dir, "best.pt"))
-
-    print("Best Acc:", best_acc)
-
-
-def train_epoch(model, loader, criterion, optimizer, device, epoch):
-    model.train()
-    loss_meter = AverageMeter()
-    acc_meter = AverageMeter()
-
-    for i, (images, targets) in enumerate(loader):
-        images, targets = images.to(device), targets.to(device)
-        optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-        if hasattr(model, "ortho_modules"):
-            for mod in model.ortho_modules:
-                # only LearnableOrthogonalProjection has .step()
-                # only retract when we actually have a W-gradient
-                if hasattr(mod, "W") and mod.W.grad is not None:
-                    mod.step(mod.W.grad)
-
-        # Update meters
-        loss_meter.update(loss.item(), images.size(0))
-        acc1 = accuracy(outputs, targets, topk=(1,))[0]
-        acc_meter.update(acc1.item(), images.size(0))
-
-    return loss_meter.avg, acc_meter.avg
-
-
-@torch.no_grad()
-def validate(model, loader, criterion, device):
-    model.eval()
-    loss_meter = AverageMeter()
-    acc_meter = AverageMeter()
-
-    for images, targets in loader:
-        images, targets = images.to(device), targets.to(device)
-        outputs = model(images)
-        loss = criterion(outputs, targets)
-
-        acc1 = accuracy(outputs, targets, topk=(1,))[0]
-        loss_meter.update(loss.item(), images.size(0))
-        acc_meter.update(acc1.item(), images.size(0))
-
-    return loss_meter.avg, acc_meter.avg
-
+    wandb.finish()
 
 if __name__ == "__main__":
     main()
