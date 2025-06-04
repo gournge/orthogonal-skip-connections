@@ -1,6 +1,0 @@
-# default hyper-parameters
-lr: 0.1
-batch_size: 128
-epochs: 200
-mixup_alpha: 0.2
-label_smoothing: 0.1
