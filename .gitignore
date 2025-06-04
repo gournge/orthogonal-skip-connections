@@ -1,4 +1,10 @@
-wandb
-data
-__pycache__
 *.egg-info
+*-dev
+build
+__pycache__
+*_cache
+uv.lock
+wandb/*
+*.log
+outputs
+.venv

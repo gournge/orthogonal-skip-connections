@@ -1,55 +1,16 @@
-# Orthogonal-ResNet Research Prototype
+# Orth-ResNet 🌀
 
-**Purpose**  
-Explore the effect of *evolving orthogonal matrices* used as skip-connection projections in ResNet-style architectures.  
+A modular research codebase to **investigate orthogonal skip-connections** in ResNet-style architectures.  Supports *fixed*, *learnable*, *partially orthogonal* and *random* projections, with out-of-the-box CIFAR-10/100 experiments and Weights-and-Biases tracking.
 
----
-
-## Variants
-
-| Key                   | Description                                                               |
-|-----------------------|---------------------------------------------------------------------------|
-| **baseline**          | Standard ResNet-18/34/50/... identity skips                              |
-| **orthogonal**        | Fixed orthogonal projections at every skip                                |
-| **learnable_ortho**   | On-manifold learned projections (Cayley/QR/SVD/steepest)                  |
-| **partial_ortho**     | Maskable stages for orthogonal skips                                      |
-| **random_skip**       | Random full-rank (non-orthogonal) projections                             |
-| **resnet18/34/50/101/152** | Standard ResNet depths using custom `Block`/`Bottleneck` definitions |
-
----
-
-## Datasets
-
-- **CIFAR-10 / CIFAR-100** (default)  
-- **STL-10 / ImageNet-Lite** (optional; see GPU memory presets in `README.md`)
-
----
-
-## Installation with **uv**
-
-[`uv`](https://astral.sh/uv/) is a fast, Rust-powered replacement for pip/venv:
-
+## Quick-start
 ```bash
-# 1. install uv (Linux/macOS)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# 1. create an isolated environment & install deps
+uv venv && source .venv/bin/activate
+uv pip install -e .[experiments]
 
-# 2. from repo root, create & activate env
-uv venv              # creates .venv
-source .venv/bin/activate
+# 2. baseline ResNet on CIFAR-10
+python -m orthogonal_skip_connections.experiments.run_experiments resnet_variant=baseline dataset=cifar10
 
-# 3a. install deps via requirements.txt
-uv pip install -r requirements.txt
-
-# 3b. — or — generate & sync a lock:
-uv lock
-uv pip sync
-
-# 4. run training
-uv run python -m train.train --variant resnet34 --dataset cifar10
-
-# 5. run training on an orthogonal model
-uv run python -m train.train --variant learnable_ortho --dataset cifar10
-
+# 3. learnable orthogonal variant
+python -m orthogonal_skip_connections.experiments.run_experiments resnet_variant=learnable_orth dataset=cifar10
 ```
-
-*Tip*: use `uv add <package>` to pin new libs, and `uv lock`/`uv pip sync` for fully‑reproducible environments.

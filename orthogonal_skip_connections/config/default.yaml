@@ -1,0 +1,31 @@
+# Hydra root
+seed: 42
+batch_size: 128
+num_workers: 4
+device: cuda
+
+optimizer:
+  name: sgd
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 5e-4
+
+scheduler:
+  name: cosine
+  epochs: 200
+  warmup_epochs: 5
+
+mixup_alpha: 0.2
+label_smoothing: 0.1
+
+wandb:
+  project: orth_resnet
+  mode: online  # offline | disabled
+
+
+model:
+  model_type: resnet18
+  skip_kind: learnable_orth
+  update_rule: steepest
+  
+dataset: cifar10

@@ -3,10 +3,10 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "orthogonal-resnet"
+name = "orthogonal_resnet"
 version = "0.1.0"
 description = "Research codebase exploring evolving orthogonal skip-connections in ResNets."
-authors = [{ name = "Your Name", email = "you@example.com" }]
+authors = [{ name = "Filip Morawiec", email = "filip.morawiec@gmail.com" }]
 requires-python = ">=3.9"
 
 dependencies = [
@@ -19,19 +19,24 @@ dependencies = [
   "tqdm",
   "wandb",
   "pyyaml",
+  "hydra-core",
 ]
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
+experiments = []
 
 [tool.uv]
+
+[tool.setuptools]
+package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where   = ["."]
 include = [
-  "models", "models.*",
-  "train",  "train.*",
-  "utils",  "utils.*",
-  "experiments", "experiments.*"
+  "models", "orthogonal_skip_connections/models*",
+  "train",  "orthogonal_skip_connections/train*",
+  "utils",  "orthogonal_skip_connections/utils*",
+  "experiments", "orthogonal_skip_connections/experiments*"
 ]
 
 [[tool.uv.index]]
@@ -44,3 +49,4 @@ explicit = true
 torch       = { index = "pytorch" }
 torchvision = { index = "pytorch" }
 torchaudio  = { index = "pytorch" }
+
