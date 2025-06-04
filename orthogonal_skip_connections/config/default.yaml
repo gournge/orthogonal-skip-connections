@@ -22,5 +22,10 @@ wandb:
   project: orth_resnet
   mode: online  # offline | disabled
 
-resnet_variant: baseline
+
+model:
+  model_type: resnet18
+  skip_kind: learnable_orth
+  update_rule: steepest
+  
 dataset: cifar10

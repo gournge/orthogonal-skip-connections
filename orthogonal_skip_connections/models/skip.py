@@ -1,4 +1,5 @@
 """Skip-connection primitives with optional orthogonality constraints."""
+
 from __future__ import annotations
 
 import torch
@@ -10,11 +11,14 @@ from orthogonal_skip_connections.utils.orthogonal_ops import (
     steepest_descent_update,
 )
 
+
 class BaseSkip(nn.Module):
     """Abstract base class; subclasses implement `forward` and (optionally) `orth_update`."""
+
     def orth_update(self, eta: float = 1e-3):
         """Optional hook called in the training loop after every optimiser step."""
         pass
+
 
 class IdentitySkip(BaseSkip):
     def __init__(self, channels: int, **kwargs):
@@ -24,8 +28,10 @@ class IdentitySkip(BaseSkip):
     def forward(self, x):
         return x
 
+
 class FixedOrthogonalSkip(BaseSkip):
     """Frozen orthogonal projection implemented as 1×1 conv with orthogonal matrix W."""
+
     def __init__(self, channels: int):
         super().__init__()
         # Orthogonal transformation implemented as a frozen weight matrix
@@ -36,6 +42,7 @@ class FixedOrthogonalSkip(BaseSkip):
         N, C, H, W = x.shape
         out = x.permute(0, 2, 3, 1).reshape(-1, C) @ self.weight.t()
         return out.view(N, H, W, C).permute(0, 3, 1, 2)
+
 
 class LearnableOrthogonalSkip(BaseSkip):
     def __init__(self, channels: int, update_rule: str = "steepest"):
@@ -66,6 +73,7 @@ class LearnableOrthogonalSkip(BaseSkip):
         out = x.permute(0, 2, 3, 1).reshape(-1, C) @ self.weight.t()
         return out.view(N, H, W, C).permute(0, 3, 1, 2)
 
+
 class RandomSkip(BaseSkip):
     def __init__(self, channels: int):
         super().__init__()
@@ -77,6 +85,7 @@ class RandomSkip(BaseSkip):
         out = x.permute(0, 2, 3, 1).reshape(-1, C) @ self.weight.t()
         return out.view(N, H, W, C).permute(0, 3, 1, 2)
 
+
 # Registry --------------------------------------------------------------------
 _REGISTRY = {
     "identity": IdentitySkip,
@@ -84,6 +93,16 @@ _REGISTRY = {
     "learnable_orth": LearnableOrthogonalSkip,
     "random": RandomSkip,
 }
+
+
+def if_model_needs_update_rule(skip_kind: str) -> bool:
+    return skip_kind in ["learnable_orth"]
+
+
+def get_skip_names():
+    """Return a list of available skip connection names."""
+    return list(_REGISTRY.keys())
+
 
 def get_skip(kind: str, channels: int, **kwargs):
     return _REGISTRY[kind](channels, **kwargs) if kind in _REGISTRY else None
