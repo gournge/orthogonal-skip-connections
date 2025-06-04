@@ -28,49 +28,54 @@ class FixedOrthogonalSkip(BaseSkip):
     """Frozen orthogonal projection implemented as 1×1 conv with orthogonal matrix W."""
     def __init__(self, channels: int):
         super().__init__()
-        self.conv = nn.Conv2d(channels, channels, kernel_size=1, bias=False)
-        # initialise to identity (which is orthogonal) and freeze
-        nn.init.eye_(self.conv.weight.data.view(channels, channels))
-        self.conv.weight.requires_grad_(False)
+        # Orthogonal transformation implemented as a frozen weight matrix
+        w = torch.eye(channels)
+        self.weight = nn.Parameter(w, requires_grad=False)
 
     def forward(self, x):
-        return self.conv(x)
+        N, C, H, W = x.shape
+        out = x.permute(0, 2, 3, 1).reshape(-1, C) @ self.weight.t()
+        return out.view(N, H, W, C).permute(0, 3, 1, 2)
 
 class LearnableOrthogonalSkip(BaseSkip):
     def __init__(self, channels: int, update_rule: str = "steepest"):
         super().__init__()
         self.channels = channels
-        self.conv = nn.Conv2d(channels, channels, kernel_size=1, bias=False)
-        nn.init.orthogonal_(self.conv.weight.data.view(channels, channels))
+        self.weight = nn.Parameter(torch.empty(channels, channels))
+        nn.init.orthogonal_(self.weight)
         self.update_rule = update_rule
 
     def _get_W_matrix(self):
-        return self.conv.weight.view(self.channels, self.channels)
+        return self.weight
 
     def orth_update(self, eta: float = 1e-3):
         W = self._get_W_matrix()
         if self.update_rule == "qr":
-            self.conv.weight.data.copy_(qr_reorthogonal(W).view_as(self.conv.weight))
+            self.weight.data.copy_(qr_reorthogonal(W))
         elif self.update_rule == "svd":
-            self.conv.weight.data.copy_(svd_sharp(W).view_as(self.conv.weight))
+            self.weight.data.copy_(svd_sharp(W))
         elif self.update_rule == "steepest":
             # treat current grad as G in steepest descent
-            G = self.conv.weight.grad.view(self.channels, self.channels)
-            self.conv.weight.data.copy_(steepest_descent_update(W, G, eta).view_as(self.conv.weight))
+            G = self.weight.grad
+            self.weight.data.copy_(steepest_descent_update(W, G, eta))
         else:
             raise ValueError(self.update_rule)
 
     def forward(self, x):
-        return self.conv(x)
+        N, C, H, W = x.shape
+        out = x.permute(0, 2, 3, 1).reshape(-1, C) @ self.weight.t()
+        return out.view(N, H, W, C).permute(0, 3, 1, 2)
 
 class RandomSkip(BaseSkip):
     def __init__(self, channels: int):
         super().__init__()
-        self.conv = nn.Conv2d(channels, channels, kernel_size=1, bias=False)
-        nn.init.normal_(self.conv.weight, mean=0.0, std=0.02)
+        self.weight = nn.Parameter(torch.empty(channels, channels))
+        nn.init.normal_(self.weight, mean=0.0, std=0.02)
 
     def forward(self, x):
-        return self.conv(x)
+        N, C, H, W = x.shape
+        out = x.permute(0, 2, 3, 1).reshape(-1, C) @ self.weight.t()
+        return out.view(N, H, W, C).permute(0, 3, 1, 2)
 
 # Registry --------------------------------------------------------------------
 _REGISTRY = {
