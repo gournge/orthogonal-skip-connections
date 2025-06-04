@@ -8,9 +8,10 @@ A modular research codebase to **investigate orthogonal skip-connections** in Re
 uv venv && source .venv/bin/activate
 uv pip install -e .[experiments]
 
-# 2. baseline ResNet on CIFAR-10
-python -m orthogonal_skip_connections.experiments.run_experiments resnet_variant=baseline dataset=cifar10
+# 2. learnable orthogonal variant
+python -m orthogonal_skip_connections.experiments.run_experiments model.skip_kind=learnable_orth
 
-# 3. learnable orthogonal variant
-python -m orthogonal_skip_connections.experiments.run_experiments resnet_variant=learnable_orth dataset=cifar10
+# 2. baseline ResNet on CIFAR-10
+python -m orthogonal_skip_connections.experiments.run_experiments model.skip_kind=identity
+
 ```
