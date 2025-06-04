@@ -1,4 +1,5 @@
 from .resnet_base import ResNet
+from .resnet_std import resnet18, resnet50
 
 _VARIANTS = {
     "baseline": dict(skip_kind="identity"),
@@ -8,9 +9,15 @@ _VARIANTS = {
     "random": dict(skip_kind="random"),
 }
 
+_STD_MODELS = {
+    "resnet18": resnet18,
+    "resnet50": resnet50,
+}
+
 def get_model(variant: str, depth: int, num_classes: int):
+    if variant in _STD_MODELS:
+        return _STD_MODELS[variant](num_classes=num_classes)
     if variant == "partial_orth":
-        # Example: first two stages orthogonal, last random – handled via custom subclass
         from .resnet_partial import PartialOrthResNet
         return PartialOrthResNet(depth, num_classes)
     cfg = _VARIANTS[variant]
