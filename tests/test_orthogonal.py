@@ -7,7 +7,7 @@ def is_orthogonal(Q, eps=1e-5):
 
 def test_cayley():
     A = torch.randn(4,4)
-    A = A - A.T  # skew‑sym.
+    A = A - A.T  # skew-sym.
     Q = cayley_transform(A)
     assert is_orthogonal(Q)
 

@@ -21,3 +21,6 @@ label_smoothing: 0.1
 wandb:
   project: orth_resnet
   mode: online  # offline | disabled
+
+resnet_variant: baseline
+dataset: cifar10

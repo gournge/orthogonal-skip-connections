@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import torch.nn as nn
-from .skip import get_skip, BaseSkip
+from orthogonal_skip_connections.models.skip import get_skip, BaseSkip
 
 class BasicBlock(nn.Module):
     expansion = 1

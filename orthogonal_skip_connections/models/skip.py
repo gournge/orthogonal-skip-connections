@@ -1,4 +1,4 @@
-"""Skip‑connection primitives with optional orthogonality constraints."""
+"""Skip-connection primitives with optional orthogonality constraints."""
 from __future__ import annotations
 
 import torch
@@ -17,6 +17,10 @@ class BaseSkip(nn.Module):
         pass
 
 class IdentitySkip(BaseSkip):
+    def __init__(self, channels: int, **kwargs):
+        super().__init__()
+        # channels is unused, but required for interface compatibility
+
     def forward(self, x):
         return x
 
@@ -33,7 +37,7 @@ class FixedOrthogonalSkip(BaseSkip):
         return self.conv(x)
 
 class LearnableOrthogonalSkip(BaseSkip):
-    def __init__(self, channels: int, update_rule: str = "qr"):
+    def __init__(self, channels: int, update_rule: str = "steepest"):
         super().__init__()
         self.channels = channels
         self.conv = nn.Conv2d(channels, channels, kernel_size=1, bias=False)
@@ -49,7 +53,7 @@ class LearnableOrthogonalSkip(BaseSkip):
             self.conv.weight.data.copy_(qr_reorthogonal(W).view_as(self.conv.weight))
         elif self.update_rule == "svd":
             self.conv.weight.data.copy_(svd_sharp(W).view_as(self.conv.weight))
-        elif self.update_rule == "cayley":
+        elif self.update_rule == "steepest":
             # treat current grad as G in steepest descent
             G = self.conv.weight.grad.view(self.channels, self.channels)
             self.conv.weight.data.copy_(steepest_descent_update(W, G, eta).view_as(self.conv.weight))

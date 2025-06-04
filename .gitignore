@@ -4,3 +4,7 @@ build
 __pycache__
 *_cache
 uv.lock
+wandb/*
+*.log
+outputs
+.venv

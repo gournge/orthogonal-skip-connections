@@ -4,7 +4,7 @@ _VARIANTS = {
     "baseline": dict(skip_kind="identity"),
     "fully_orth": dict(skip_kind="fixed_orth"),
     "learnable_orth": dict(skip_kind="learnable_orth"),
-    "partial_orth": dict(skip_kind="fixed_orth"),  # will be overridden layer‑wise
+    "partial_orth": dict(skip_kind="fixed_orth"),  # will be overridden layer-wise
     "random": dict(skip_kind="random"),
 }
 

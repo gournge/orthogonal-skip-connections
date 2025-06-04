@@ -19,9 +19,11 @@ dependencies = [
   "tqdm",
   "wandb",
   "pyyaml",
+  "hydra-core",
 ]
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
+experiments = []
 
 [tool.uv]
 
@@ -31,10 +33,10 @@ package-dir = {"" = "."}
 [tool.setuptools.packages.find]
 where   = ["."]
 include = [
-  "models", "models*",
-  "train",  "train*",
-  "utils",  "utils*",
-  "experiments", "experiments*"
+  "models", "orthogonal_skip_connections/models*",
+  "train",  "orthogonal_skip_connections/train*",
+  "utils",  "orthogonal_skip_connections/utils*",
+  "experiments", "orthogonal_skip_connections/experiments*"
 ]
 
 [[tool.uv.index]]

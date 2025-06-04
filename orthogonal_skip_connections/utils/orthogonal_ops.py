@@ -1,4 +1,4 @@
-"""Orthogonality‑related helper functions."""
+"""Orthogonality-related helper functions."""
 from __future__ import annotations
 
 import torch
@@ -9,7 +9,7 @@ import torch.nn.functional as F
 # ---------------------------------------------------------------------------
 
 def cayley_transform(A: torch.Tensor) -> torch.Tensor:
-    """Cayley transform to map skew‑symmetric A to orthogonal Q = (I - A)(I + A)^{-1}."""
+    """Cayley transform to map skew-symmetric A to orthogonal Q = (I - A)(I + A)^{-1}."""
     I = torch.eye(A.size(0), device=A.device, dtype=A.dtype)
     return torch.linalg.solve(I + A, I - A)
 
@@ -34,7 +34,7 @@ def steepest_descent_update(W: torch.Tensor, G: torch.Tensor, eta: float) -> tor
     return svd_sharp(W @ (torch.eye(W.size(0), device=W.device) - eta * X))
 
 # ---------------------------------------------------------------------------
-# Module‑level utilities
+# Module-level utilities
 # ---------------------------------------------------------------------------
 
 def reorthogonalize_model(model: torch.nn.Module, eta: float = 1e-3):
