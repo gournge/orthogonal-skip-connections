@@ -1,6 +1,6 @@
 # Hydra root
 seed: 42
-batch_size: 128
+batch_size: 1024
 num_workers: 4
 device: cuda
 
@@ -14,18 +14,21 @@ scheduler:
   name: cosine
   epochs: 200
   warmup_epochs: 5
+  epoch_eval_freq: 1
 
 mixup_alpha: 0.2
 label_smoothing: 0.1
 
 wandb:
-  project: orth_resnet
+  project: orthogonal_skip_connections
   mode: online  # offline | disabled
-
+  run_name: default_run
+  infer_name: true
 
 model:
   model_type: resnet18
   skip_kind: learnable_orth
   update_rule: steepest
+  update_rule_iters: 8
   
-dataset: cifar10
+dataset: cifar100

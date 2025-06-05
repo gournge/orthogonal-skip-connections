@@ -1,11 +1,11 @@
-from orthogonal_skip_connections.models.resnet_base import resnet18, resnet50
+from orthogonal_skip_connections.models.resnet_base import resnet18, resnet34, resnet50
 from orthogonal_skip_connections.models.skip import (
     get_skip_names,
-    if_model_needs_update_rule,
 )
 
 _BASE_MODELS = {
     "resnet18": resnet18,
+    "resnet34": resnet34,
     "resnet50": resnet50,
 }
 
@@ -15,6 +15,7 @@ def get_model(
     model_type: str,
     skip_kind: str = "identity",
     update_rule: str | None = None,
+    update_rule_iters: int | None = None,
 ):
     if skip_kind not in get_skip_names():
         raise ValueError(
@@ -27,5 +28,8 @@ def get_model(
         )
 
     return _BASE_MODELS[model_type](
-        num_classes=num_classes, skip_kind=skip_kind, update_rule=update_rule
+        num_classes=num_classes,
+        skip_kind=skip_kind,
+        update_rule=update_rule,
+        update_rule_iters=update_rule_iters,
     )

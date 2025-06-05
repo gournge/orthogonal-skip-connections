@@ -16,6 +16,7 @@ class BasicBlock(nn.Module):
         downsample: nn.Module | None = None,
         *,
         update_rule: str | None = None,
+        update_rule_iters: int | None = None,
     ):
         super().__init__()
         self.conv1 = nn.Conv2d(
@@ -27,7 +28,10 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.skip: BaseSkip = get_skip(
-            skip_kind, planes * self.expansion, update_rule=update_rule
+            skip_kind,
+            planes * self.expansion,
+            update_rule=update_rule,
+            update_rule_iters=update_rule_iters,
         )
 
     def forward(self, x):
@@ -54,6 +58,7 @@ class Bottleneck(nn.Module):
         downsample: nn.Module | None = None,
         *,
         update_rule: str | None = None,
+        update_rule_iters: int | None = None,
     ):
         super().__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
@@ -69,7 +74,10 @@ class Bottleneck(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.skip: BaseSkip = get_skip(
-            skip_kind, planes * self.expansion, update_rule=update_rule
+            skip_kind,
+            planes * self.expansion,
+            update_rule=update_rule,
+            update_rule_iters=update_rule_iters,
         )
 
     def forward(self, x):
@@ -94,6 +102,7 @@ class ResNet(nn.Module):
         skip_kind: str = "identity",
         *,
         update_rule: str | None = None,
+        update_rule_iters: int | None = None,
     ):
         super().__init__()
         self.inplanes = 64
@@ -109,6 +118,7 @@ class ResNet(nn.Module):
             stride=1,
             skip_kind=skip_kind,
             update_rule=update_rule,
+            update_rule_iters=update_rule_iters,
         )
         self.layer2 = self._make_layer(
             block,
@@ -117,6 +127,7 @@ class ResNet(nn.Module):
             stride=2,
             skip_kind=skip_kind,
             update_rule=update_rule,
+            update_rule_iters=update_rule_iters,
         )
         self.layer3 = self._make_layer(
             block,
@@ -125,6 +136,7 @@ class ResNet(nn.Module):
             stride=2,
             skip_kind=skip_kind,
             update_rule=update_rule,
+            update_rule_iters=update_rule_iters,
         )
         self.layer4 = self._make_layer(
             block,
@@ -133,16 +145,17 @@ class ResNet(nn.Module):
             stride=2,
             skip_kind=skip_kind,
             update_rule=update_rule,
+            update_rule_iters=update_rule_iters,
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
-        self.num_orthogonal_skips = None
-        if skip_kind == "learnable_orth":
-            self.num_orthogonal_skips = sum(layers)
+        self.skip_kind = skip_kind
 
-    def _make_layer(self, block, planes, blocks, stride, skip_kind, update_rule):
+    def _make_layer(
+        self, block, planes, blocks, stride, skip_kind, update_rule, update_rule_iters
+    ):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -163,6 +176,7 @@ class ResNet(nn.Module):
                 skip_kind,
                 downsample,
                 update_rule=update_rule,
+                update_rule_iters=update_rule_iters,
             )
         ]
         self.inplanes = planes * block.expansion
@@ -173,6 +187,7 @@ class ResNet(nn.Module):
                     planes,
                     skip_kind=skip_kind,
                     update_rule=update_rule,
+                    update_rule_iters=update_rule_iters,
                 )
             )
         return nn.Sequential(*layers)
@@ -194,9 +209,32 @@ def resnet18(
     skip_kind: str = "identity",
     *,
     update_rule: str | None = None,
+    update_rule_iters: int | None = None,
 ) -> ResNet:
     return ResNet(
-        BasicBlock, [2, 2, 2, 2], num_classes, skip_kind, update_rule=update_rule
+        BasicBlock,
+        [2, 2, 2, 2],
+        num_classes,
+        skip_kind,
+        update_rule=update_rule,
+        update_rule_iters=update_rule_iters,
+    )
+
+
+def resnet34(
+    num_classes: int,
+    skip_kind: str = "identity",
+    *,
+    update_rule: str | None = None,
+    update_rule_iters: int | None = None,
+) -> ResNet:
+    return ResNet(
+        BasicBlock,
+        [3, 4, 6, 3],
+        num_classes,
+        skip_kind,
+        update_rule=update_rule,
+        update_rule_iters=update_rule_iters,
     )
 
 
@@ -205,7 +243,13 @@ def resnet50(
     skip_kind: str = "identity",
     *,
     update_rule: str | None = None,
+    update_rule_iters: int | None = None,
 ) -> ResNet:
     return ResNet(
-        Bottleneck, [3, 4, 6, 3], num_classes, skip_kind, update_rule=update_rule
+        Bottleneck,
+        [3, 4, 6, 3],
+        num_classes,
+        skip_kind,
+        update_rule=update_rule,
+        update_rule_iters=update_rule_iters,
     )

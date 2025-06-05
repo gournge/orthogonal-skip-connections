@@ -45,12 +45,15 @@ class FixedOrthogonalSkip(BaseSkip):
 
 
 class LearnableOrthogonalSkip(BaseSkip):
-    def __init__(self, channels: int, update_rule: str = "steepest"):
+    def __init__(
+        self, channels: int, update_rule: str = "steepest", update_rule_iters: int = 5
+    ):
         super().__init__()
         self.channels = channels
         self.weight = nn.Parameter(torch.empty(channels, channels))
         nn.init.orthogonal_(self.weight)
         self.update_rule = update_rule
+        self.update_rule_iters = update_rule_iters
 
     def _get_W_matrix(self):
         return self.weight
@@ -64,7 +67,9 @@ class LearnableOrthogonalSkip(BaseSkip):
         elif self.update_rule == "steepest":
             # treat current grad as G in steepest descent
             G = self.weight.grad
-            self.weight.data.copy_(steepest_descent_update(W, G, eta))
+            self.weight.data.copy_(
+                steepest_descent_update(W, G, eta, self.update_rule_iters)
+            )
         else:
             raise ValueError(self.update_rule)
 

@@ -32,7 +32,10 @@ def svd_sharp(W: torch.Tensor) -> torch.Tensor:
 
 
 def newton_schulz_sharp(W: torch.Tensor, num_iters: int = 5) -> torch.Tensor:
-    """Applies the sharp-operator to W using the Newton-Schulz iteration."""
+    """Applies the sharp-operator to W using Newton-Schulz iteration.
+
+    num_iters: number of iterations to perform.
+    """
     W_norm = W / W.norm(p="fro")
     M = W_norm
     for _ in range(num_iters):
@@ -41,19 +44,28 @@ def newton_schulz_sharp(W: torch.Tensor, num_iters: int = 5) -> torch.Tensor:
 
 
 def steepest_descent_update(
-    W: torch.Tensor, G: torch.Tensor, eta: float, avoid_rank: bool = True
+    W: torch.Tensor,
+    G: torch.Tensor,
+    eta: float,
+    check_rank: bool = True,
+    update_rule_iters: int = 5,
 ) -> torch.Tensor:
-    """One step of the steepest descent update that stays on the orthogonal manifold."""
+    """One step of the steepest descent update that stays on the orthogonal manifold.
+
+    check_rank: if True then perform a matrix rank check, otherwise use a simplified update.
+    """
     skew = W.T @ G - G.T @ W
-    X = newton_schulz_sharp(skew)
+    X = newton_schulz_sharp(skew, num_iters=update_rule_iters)
     I = torch.eye(W.size(0), device=W.device, dtype=W.dtype)
     WX = W @ (I - eta * X)
-    if avoid_rank:
-        return newton_schulz_sharp(WX)
-    # Avoid repeated computation and unnecessary checks
-    if torch.linalg.matrix_rank(skew) == W.size(0):
-        return WX / torch.sqrt(torch.tensor(1 + eta**2, device=W.device, dtype=W.dtype))
-    return svd_sharp(WX)
+    if check_rank:
+        if torch.linalg.matrix_rank(skew) == W.size(0):
+            return WX / torch.sqrt(
+                torch.tensor(1 + eta**2, device=W.device, dtype=W.dtype)
+            )
+        return svd_sharp(WX)
+    else:
+        return newton_schulz_sharp(WX, num_iters=update_rule_iters)
 
 
 # ---------------------------------------------------------------------------

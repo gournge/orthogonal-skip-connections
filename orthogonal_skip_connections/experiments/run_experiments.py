@@ -5,7 +5,7 @@ from omegaconf import DictConfig
 import wandb
 import torch
 
-from orthogonal_skip_connections.models import get_model, if_model_needs_update_rule
+from orthogonal_skip_connections.models import get_model
 from orthogonal_skip_connections.train.datamodule import get_dataloaders
 from orthogonal_skip_connections.train.trainer import Trainer
 
@@ -19,7 +19,19 @@ def main(cfg: DictConfig):
         print("Using CPU for training.")
     else:
         print(f"Using {cfg.device} for training.")
-    wandb.init(project=cfg.wandb.project, mode=cfg.wandb.mode, config=dict(cfg))
+
+    name = cfg.wandb.run_name
+    if cfg.wandb.infer_name:
+        name = f"{cfg.model.model_type}_{cfg.dataset}_{cfg.model.skip_kind}"
+        if cfg.model.skip_kind == "learnable_orth":
+            name += f"_{cfg.model.update_rule}_{cfg.model.update_rule_iters}"
+
+    wandb.init(
+        project=cfg.wandb.project,
+        mode=cfg.wandb.mode,
+        config=dict(cfg),
+        name=name,
+    )
     train_loader, test_loader, num_classes = get_dataloaders(
         cfg.dataset, cfg.batch_size, cfg.num_workers
     )
@@ -29,8 +41,9 @@ def main(cfg: DictConfig):
         "model_type": cfg.model.model_type,
         "skip_kind": cfg.model.skip_kind,
     }
-    if if_model_needs_update_rule(cfg.model.skip_kind):
+    if cfg.model.skip_kind == "learnable_orth":
         model_kwargs["update_rule"] = cfg.model.update_rule
+        model_kwargs["update_rule_iters"] = cfg.model.update_rule_iters
 
     model = get_model(**model_kwargs)
 
