@@ -1,0 +1,519 @@
+\documentclass[11pt]{article}  
+\iffalse
+--------------------------------------------
+
+To do:
+JMLR logins: peter.bartlett, stevenneilevans
+      
+
+To consider:
+
+What about boosting smoothness through depth in more generality --
+Sobolev and/or Besov spaces?  
+
+What about not invertible? e.g., lower output dimension?
+
+Neater analysis of ||h-h*||.
+
+Dispensing with differentiability of $h_i$: denseness.
+
+Is smoothness of h necessary?
+
+Lower bounds on best decomposition? Especially in terms of
+alpha,M,R,...
+
+What about loss other than quadratic?
+
+Optimization? What does lower bound on gradient say about progress?
+
+Algorithms? Constructive algorithms in each layer.
+\fi
+\usepackage{amsmath, amssymb, amsthm}  
+\usepackage{fullpage}  
+\usepackage{mathtools}  
+\usepackage{enumitem}  
+\usepackage{bm}  
+  
+\title{Orthogonal Skip Connections}  
+\author{Filip Morawiec}  
+\date{June 2025}
+  
+\newtheorem{theorem}{Theorem}  
+\newtheorem{lemma}{Lemma}  
+  
+\newcommand{\norm}[1]{\left\|#1\right\|}  
+\newcommand\calX{{\mathcal{X}}}  
+  
+\begin{document}  
+\maketitle  
+  
+\begin{abstract}  
+   %  Inspired by how ResNet addressed the problem of exploding gradients by skip connections, we explore how replacing skip connections with orthogonal weights affects training of the network.  
+   ResNet architecture was a breakthrough in deep learning. 
+   Its success has been attributed to the use of skip connections, which in turn mitigated the problem of exploding gradients.
+   It has been shown that ResNet overcame exploding gradients because it's skip connections (identity matrices) are norm preserving. 
+   In this paper, we replace these identity matrices with orthogonal matrices, which are by defintion norm preserving. 
+   First, we interestingly show that as the number of layers grows, the orthogonal matrices need to converge to the identity matrix, following the previous formulation of ResNet. 
+   Then, we explore the performance of orthogonal skip connections multiple regression tasks, using the recent efficient algorithm for gradient descent on orthogonal matrices~\cite{modula-docs}
+\end{abstract}  
+  
+\tableofcontents
+\vspace{1cm}
+
+\hrule
+
+\newpage
+
+\section{Introduction}
+
+\section{Theoretical considerations}
+
+This part wouldn't have been possible if not the work of \cite{bartlett2018representingsmoothfunctionscompositions}, 
+which came up with a construction of the decomposition of a function into near-identity functions. Their proof has been adapted to orthogonal matrices. 
+
+\subsection{Notation and definitions}
+
+\subsection{Decomposing a function into near-orthogonal functions}  
+  
+\begin{theorem}\label{theorem:main1}  
+Fix $R>0$, denote $\calX=B_R(\mathbb{R}^d)$.  
+Let $h:\mathbb{R}^d\to\mathbb{R}^d$ be a differentiable, invertible map satisfying  
+the following properties:  
+\begin{enumerate}  
+    \item \textbf{Smoothness:} for some $\alpha>0$  
+    and all $x,y,u\in\calX$,  
+     \begin{equation}  
+      \label{eq:smoothness}  
+        \left\|\bigl(D h(y) - D h(x)\bigr)u\right\|  
+           \le \alpha\|y-x\|\|u\|;  
+     \end{equation}  
+     \item \textbf{Lipschitz inverse:}  
+     for some $M>0$, $ \|h^{-1}\|_L\le M$;  
+     \item \textbf{Positive orientation:} For some $x_0\in\calX$,  
+    $\det\bigl(Dh(x_0)\bigr)>0$.  
+   %  h(0) = 0
+   \item \textbf{Zero at origin:} $h(0) = 0$
+\end{enumerate}  
+  
+Then for all $m$, there exist $m$ functions  
+$h_1,\ldots,h_m:\mathbb{R}^d\to\mathbb{R}^d$ and $m$ orthogonal matrices $W_1, \ldots W_n \in \mathbb{R}^{n \times n}$ satisfying,  
+for all $x\in\calX$,  
+\[
+    h_m\circ h_{m-1}\circ\cdots\circ h_1(x) \;=\; h(x),  
+\]
+and, on $h_{i-1}\circ\cdots \circ h_1(\calX)$, the following terms decrease in $O\left(\frac{\log m}{m}\right)$ rate:  $\|h_i-W_i\|_L, \ \| I - W_i\|$ for $i=1,\ldots,m$.
+
+\textbf{TODO: We can probably replace the $\log{m}/m$ term by choosing any sequence in $(0, 1)$ that converges to $0$}
+
+\end{theorem}  
+  
+\vspace{1cm}  
+  
+To help prove the theorem, we will note the following:  
+  
+\begin{lemma}\label{lemma:smoothnessimplications}  
+    For $h$ satisfying   
+    the conditions of Theorem~\ref{theorem:main1}  
+    and any $x,y\in\calX$,  
+      \begin{align*}  
+        \bigl\|h(y) - h(x)- Dh(x)(y-x)\bigr\|   
+          & \;\le\; \frac{\alpha}{2}\|y-x\|^2,  
+      \end{align*}  
+    and moreover,  
+\[
+         \|h\|_L \;\le\; 1+\alpha R.  
+\]
+\end{lemma}  
+  
+Now we can proceed to prove Theorem~\ref{theorem:main1}. 
+  
+\begin{proof}  
+  
+To organize the proof, we will first set up our notation and then prove two main bounds (Case~1 and Case~2) that together imply the final estimate.  
+  
+\subsubsection{Proof setup}  
+  
+For $i = 1, 2, \ldots, m$, define  
+\begin{equation*}  
+    g_i(x) \;:=\; \frac{1}{a_i}\;W_i^\top\,h\bigl(a_i\,W_i\,x\bigr),\,g_i : \mathcal{X} \longrightarrow \mathbb{R}^d.
+\end{equation*}  
+
+Each $a_i>0$ is a scalar parameter with
+\[
+   0 < a_1 < a_2 < \cdots < a_m = 1, \ a_i = \left(1 - c\right)^{m-i} \text{ for some } c \in (0,1).
+\]
+
+The orthogonal matrices $W_i\in \mathbb{R}^{d \times d}$ satisfy $\| I - W_i \| \leq C \| a_i - a_{i-1}\|$ for some constant $C>0$ and all $i=1,\ldots,m$.
+Note that from this property we obtain bounds on closeness of consecutive $W_i$'s:
+\begin{align} 
+   \| W_i - W_{i-1} \| &\leq \| I - W_i \| + \| I - W_{i-1} \| \\
+   &\leq C \| a_i - a_{i-1} \| + C \| a_{i-1} - a_{i-2}\| \\
+   &\leq C \| a_i - a_{i-2} \| < C \| a_i - a_{i-1}\| \label{eq:W_i-W_i-1}
+\end{align}
+and
+\begin{align} 
+   \| a_i W_i - a_{i-1} W_{i-1} \| &\leq \| a_i W_i - a_i W_{i-1} \| + \| a_i W_{i-1} - a_{i-1} W_{i-1} \| \\
+   &\leq a_i \| W_i - W_{i-1} \| + \| a_i - a_{i-1} \| \\
+   &< a_i  C \|a_i - a_{i-1}\| + \| a_i - a_{i-1} \|  = \| a_i - a_{i-1} \| (C a_i + 1)  \label{eq:W_i-W_i-1-2}
+\end{align}
+
+
+Then we set 
+\[
+   h_i \;:=\; g_i \,\circ\, g_{i-1}^{-1}\quad (i=1,\ldots,m),
+\]
+with the convention $g_0 = \mathrm{Id}$ (the identity map).  Observe that 
+\[
+   h \;=\; h_m \circ \cdots \circ h_1 
+   \;=\; g_m\circ g_{m-1}^{-1}\; \circ\; \cdots\; \circ g_1\circ g_0^{-1}
+   \;=\; g_m \circ g_{m-1} \circ \cdots \circ g_1,
+\]
+so indeed the composition of $h_1,\dots,h_m$ yields $h$.  
+
+We aim to show 
+\[
+   \|h_i - W_i\|_L 
+   \;:=\; \sup_{x \neq y}\,
+          \frac{\bigl\|\bigl(h_i(x) - W_i x\bigr) - \bigl(h_i(y) - W_i y\bigr)\bigr\|}
+               {\|x - y\|}  
+   \;\; \text{is}\; O\!\bigl(\tfrac{\log m}{m}\bigr).
+\]
+
+\subsubsection{Bounding the first term $\|h_1 - W_1\|_L$}  
+
+We have
+\[
+   h_1(x)
+   \;=\;
+   g_1 \bigl(x\bigr)
+   \;=\;
+   \frac{1}{a_1}\,W_1^\top\,h\bigl(a_1\,W_1\,x\bigr).
+\]
+Hence
+\[
+   h_1(x) - W_1\,x
+   \;=\;
+   \frac{1}{a_1}\,W_1^\top\,h\bigl(a_1\,W_1\,x\bigr)
+   \;-\; W_1\,x.
+\]
+Consider two inputs $x,y\in \calX$.  We want to bound
+\[
+   \bigl\|\bigl(h_1(x)-W_1x\bigr) - \bigl(h_1(y)-W_1y\bigr)\bigr\|.
+\]
+Using Lemma~\ref{lemma:smoothnessimplications}, expand
+\[
+  h\bigl(a_1\,W_1\,x\bigr) 
+  \;=\; 
+  h\bigl(a_1\,W_1\,y\bigr) 
+  \;+\; Dh\bigl(a_1\,W_1\,y\bigr)\,\bigl(a_1\,W_1\,(x-y)\bigr) 
+  \;+\; r,
+\]
+where $\|\,r\,\|\le (\alpha/2)\,\|\,a_1\,W_1\,(x-y)\|^2$.  Hence
+\begin{align*}
+  &\bigl\|\bigl(h_1(x)-W_1x\bigr) - \bigl(h_1(y)-W_1y\bigr)\bigr\|
+  = \\
+  &\biggl\|\;
+  \frac{1}{a_1}\,W_1^\top\,\bigl[h\bigl(a_1\,W_1\,x\bigr)
+      - h\bigl(a_1\,W_1\,y\bigr)\bigr]
+  \;-\; W_1\,(x-y) 
+  \biggr\| \leq \\
+     &\biggl\|\;\frac{1}{a_1}\,W_1^\top\,Dh\bigl(a_1\,W_1\,y\bigr)\,\bigl(a_1\,W_1\,(x-y)\bigr) - W_1\,(x-y)\biggr\| + \biggl\|\;\frac{1}{a_1}\,W_1^\top\,r\biggr\| \leq \\
+     &\biggl\| Dh(W_1 y) - I \biggr\|  a_1 \left\| x - y \right\|  + \frac{\alpha a_1}{2} \left\| x - y \right\|^2 = \\ &a_1 \left\| x - y \right\| \left[ \biggl\| Dh(W_1 y) - I \biggr\| - \frac{\alpha}{2} \left\| x - y \right\| \right]
+\end{align*}
+    
+\subsubsection{Bounding the general term $\|h_i - W_i\|_L$}  
+  
+For $i>1$, recall 
+\[
+   h_i \;=\; g_i \circ g_{i-1}^{-1},
+\]
+so
+\[
+   h_i(x) - W_i\,x 
+   \;=\; g_i\bigl(g_{i-1}^{-1}(x)\bigr)\;-\;W_i\,x.
+\]
+Given $x,y\in \calX$, define 
+\[
+  u := g_{i-1}^{-1}(x), 
+  \quad
+  v := g_{i-1}^{-1}(y).
+\]
+Then 
+\[
+   x = g_{i-1}(u), 
+   \quad 
+   y = g_{i-1}(v).
+\]
+Note that since $\| h^{-1} \|_L \leq M$, we have 
+
+\begin{align*}
+   \left\| x - y \right\| = \frac{1}{a_{i-1}} &\left\| a_{i-1} W_{i-1} g_{i-1}(u) - a_{i-1} W_{i-1} g_{i-1}(v) \right\| \geq \\
+   \frac{1}{M a_{i-1}} &\left\| h^{-1}(a_{i-1} W_{i-1} g_{i-1}(u)) - h^{-1}( a_{i-1} W_{i-1} g_{i-1}(v)) \right\| = \\
+   \frac{1}{M a_{i-1}} &\left\| h^{-1}(h\bigl(a_{i-1}\,W_{i-1}\,u\bigr)) - h^{-1}(h\bigl(a_{i-1}\,W_{i-1}\,v\bigr)) \right\| = \\
+   \frac{1}{M a_{i-1}} &\left\| a_{i-1}\,W_{i-1}\,u - a_{i-1}\,W_{i-1}\,v \right\| = \\
+   \frac{1}{M} &\left\| u - v \right\|
+\end{align*}
+
+and also $\| v \| \leq M R$ and $\| u \| \leq M R$. \textbf{TODO: Update the following to use this}
+
+
+The difference we need to bound is
+\[
+   \bigl\|\bigl(h_i(x) - W_i x\bigr) - \bigl(h_i(y) - W_i y\bigr)\bigr\| 
+   \;=\;
+   \bigl\|\,g_i(u) - g_i(v) - W_i\bigl[g_{i-1}(u) - g_{i-1}(v)\bigr]\bigr\|.
+\]
+Recall
+\[   
+   g_i(u)
+   \;=\;
+   \frac{1}{a_i}\,W_i^\top\,h\bigl(a_i\,W_i\,u\bigr),
+   \quad
+   g_{i-1}(u)
+   \;=\;
+   \frac{1}{a_{i-1}}\,W_{i-1}^\top\,h\bigl(a_{i-1}\,W_{i-1}\,u\bigr).
+\]
+Hence we can rewrite
+\begin{align*}
+  &\;\;\;\;g_i(u) - g_i(v) - W_i\bigl[g_{i-1}(u) - g_{i-1}(v)\bigr]
+  \\
+  &=  
+  \frac{1}{a_i}\,W_i^\top\,\Bigl[h\bigl(a_i\,W_i\,u\bigr)-h\bigl(a_i\,W_i\,v\bigr)\Bigr]
+  \;-\;  
+  \frac{1}{a_{i-1}}\,W_i\,W_{i-1}^\top\,\Bigl[h\bigl(a_{i-1}\,W_{i-1}\,u\bigr)-h\bigl(a_{i-1}\,W_{i-1}\,v\bigr)\Bigr].
+\end{align*}
+To shorten notation, let
+\[
+   A := a_i\,W_i\,u,\quad B:= a_i\,W_i\,v,
+   \quad
+   X := a_{i-1}\,W_{i-1}\,u,\quad Y := a_{i-1}\,W_{i-1}\,v.
+\]
+By Lemma~\ref{lemma:smoothnessimplications}, we can write
+\begin{align*}
+   h(A) - h(B) 
+   &= Dh(B)\,(A-B) + r_1,
+   \quad \text{where } \|r_1\|\le \tfrac{\alpha}{2}\|A-B\|^2,  \\
+   h(X) - h(Y) 
+   &= Dh(Y)\,(X-Y) + r_2,
+   \quad \text{where } \|r_2\|\le \tfrac{\alpha}{2}\|X-Y\|^2.
+\end{align*}
+and expanding further:
+\begin{align*}
+   \|r_1\|\le \tfrac{\alpha}{2}\|A-B\|^2 &\leq \tfrac{\alpha}{2} a_{i}^2 \| u - v \| ^ 2 \\
+   \|r_2\|\le \tfrac{\alpha}{2}\|X-Y\|^2 &\leq \tfrac{\alpha}{2} a_{i-1}^2 \| x - y \| ^ 2 
+\end{align*}
+
+Thus
+\begin{align*}
+  &\Bigl\|\tfrac{1}{a_i}\,W_i^\top\bigl[h(A) - h(B)\bigr]
+    \;-\; \tfrac{1}{a_{i-1}}\,W_i\,W_{i-1}^\top\bigl[h(X)-h(Y)\bigr]\Bigr\|
+  \\
+  &=  
+  \Bigl\|\,
+   \tfrac{1}{a_i}\,W_i^\top\bigl[Dh(B)\,(A-B) + r_1\bigr]
+   \;-\;
+   \tfrac{1}{a_{i-1}}\,W_i\,W_{i-1}^\top\bigl[Dh(Y)\,(X-Y) + r_2\bigr]
+  \Bigr\|
+  \\
+  &\le
+    \Bigl\|\,
+    \tfrac{1}{a_i}\,W_i^\top\,Dh(B)\,(A-B)
+    \;-\;
+    \tfrac{1}{a_{i-1}}\,W_i\,W_{i-1}^\top\,Dh(Y)\,(X-Y)
+    \Bigr\|
+  \;+\;
+  \underbrace{
+    \Bigl\|\,
+    \tfrac{1}{a_i}W_i^\top\,r_1 \;-\;
+    \tfrac{1}{a_{i-1}}\,W_i\,W_{i-1}^\top\,r_2
+    \Bigr\|
+  }_{r \, := } \\ 
+  &\leq \Bigl\|\,\underbrace{
+    \tfrac{1}{a_i}\,W_i^\top\,Dh(B)\,a_i\,W_i
+    \;-\;
+    \tfrac{1}{a_{i-1}}\,W_i\,W_{i-1}^\top\,Dh(Y)\,a_{i-1}\,W_{i-1}
+    }_{J \, := }\Bigr\| \Bigl\| u - v \Bigr\|\,+\,r.
+\end{align*}
+
+We can split and bound the term $J$ in the following way:
+
+\begin{align*}
+    \|J\| &= \| \tfrac{1}{a_i}\,W_i^\top\,Dh(B)\,a_i\,W_i
+    \;-\;
+    \tfrac{1}{a_{i-1}}\,W_i\,W_{i-1}^\top\,Dh(Y)\,a_{i-1}\,W_{i-1} \| = \\
+    &= \| \,W_i^\top\,Dh(B)\,W_i
+    \;-\;
+    \,W_i\,W_{i-1}^\top\,Dh(Y)\,W_{i-1} \| = \\
+    &= \left\| \left[ \,W_i^\top\,Dh(B)\,W_i - \,W_i^\top\,Dh(Y)\,W_i \right] + \left[ \,W_i^\top\,Dh(Y)\,W_i-\,W_i\,W_{i-1}^\top\,Dh(Y)\,W_{i-1} \right] \right\| \leq \\
+    &\leq \alpha \bigl\| B - Y\bigl\|^2 + \bigl\| \underbrace{\,W_i^\top\,Dh(Y)\,W_i-\,W_i\,W_{i-1}^\top\,Dh(Y)\,W_{i-1} }_{J_2 \ :=}\bigr\|
+\end{align*}
+
+Then, abusing notation and writing $Dh(Y)$ as $D$
+\begin{align*}
+    \left\| J_2\right\| &= \left\| \left[ W_i^\top\,D\,W_i - W_i^\top\,D\,W_{i-1} \right] + \left[W_i^\top\,D\,W_{i-1} - \,W_i\,W_{i-1}^\top\,D\,W_{i-1} \right] \right\| \leq \\
+    &\leq \left\| D \right\| \| W_i - W_{i-1} \| + \left\| W_i^\top - \,W_i\,W_{i-1}^\top \right\| \left\|  D \right\| = \\
+    &= \left\| D \right\| \left( \| W_i - W_{i-1} \| + \left\| W_i^\top - W_i W_i^\top + W_i W_i^\top - \,W_i\,W_{i-1}^\top\right\| \right) \leq \\
+    &\leq \left\| D \right\| \left( \| W_i - W_{i-1} \| + \left\| W_i^\top - W_i W_i^\top \right\| + \left\| W_i W_i^\top - \,W_i\,W_{i-1}^\top\right\| \right) = \\
+    &= \left\| D \right\| \left( \| W_i - W_{i-1} \| + \left\| I - W_i \right\| + \left\| W_i^\top - \,W_{i-1}^\top\right\| \right) = \\
+    &= \left\| D \right\| \left\| \left( \| W_i - W_{i-1} \| + \left\| I - W_i \right\| + \left\| W_i - \,W_{i-1}\right\| \right) \right\|.
+\end{align*}
+
+Note that we can bound $D$ by:
+\begin{equation}
+   \| Dh(a_{i-1} W_{i-1} v) \| \leq \alpha \left\| a_{i-1} W_{i-1} v \right\| \leq \alpha a_{i-1} M R
+\end{equation}
+
+Combining, we obtain:
+
+\begin{align*}
+   \bigl\|\bigl(h_i(x) - W_i x\bigr) - \bigl(h_i(y) - W_i y\bigr)\bigr\|  
+   \leq r\,&+\,\left\| u - v \right\| \left( \alpha \left\| B - Y \right\|^2  + J_2 \right)
+   \leq \\
+   \leq 
+   \tfrac{\alpha}{2} \left( a_{i}^2 \| u - v \| ^ 2 +  a_{i-1}^2 \| x - y \| ^ 2 \right)
+      &\,+\,\\
+      \left\| u- v \right\| 
+      \bigl( 
+         \alpha \left\| a_i W_i v - a_{i-1} W_{i-1} v \right\|^2
+         &+\left\| a_{i-1} M R \right\| \left( 2 \| W_i - W_{i-1} \| + \left\| I - W_i \right\| \right) 
+      \bigr) \\
+   \leq \tfrac{\alpha}{2} \left( (a_{i}^2 M^2 +  a_{i-1}^2) \| x - y \| ^ 2 \right)
+   &\,+\,\\
+   M \left\| x - y \right\| 
+   \bigl( 
+      \alpha \left\| a_i W_i - a_{i-1} W_{i-1} \right\| R^2
+      &+ \left\| a_{i-1} M R \right\| \left( 2\| W_i - W_{i-1} \| + \left\| I - W_i \right\| \right)
+   \bigr) \\
+   \leq \| x - y \| \bigl[ 
+      \tfrac{\alpha}{2} M^2 \| x - y \|
+      +  \alpha \left\| a_i W_i - a_{i-1} W_{i-1} \right\| R^2
+      &+\left\| a_{i-1} M R \right\| \left( 2\| W_i - W_{i-1} \| + \left\| I - W_i \right\| \right)
+   \bigr] \\
+   \text{using the equations \eqref{eq:W_i-W_i-1} and \eqref{eq:W_i-W_i-1-2}, we can write: } &\\
+   < \| x - y \| \bigl[ 
+      \tfrac{\alpha}{2} M^2 \| x - y \|
+      +  \alpha (C a_i + 1) (a_i - a_{i-1}) R^2
+      &+\left\| a_{i-1} M R \right\| \left( 2C (a_i - a_{i-1}) + C (a_i - a_{i-1}) \right) \bigr] \\
+   \leq \| x - y \| \bigl[
+      \tfrac{\alpha}{2} M^2 \| x - y \|
+      +  \alpha (C a_i + 1) (a_i - a_{i-1}) R^2
+      &+3C \left\| a_{i-1} M R \right\| (a_i - a_{i-1}) \bigr]. 
+\end{align*}
+
+\paragraph{Case 1: Arguments are close.}
+
+% TODO: is this optimal? necessary?
+If $\| x - y \| \leq \| a_i - a_{i-1} \|$, then we can bound the above expression by
+
+\begin{align*}
+   \| h_i - W_i \|_L &< \bigl[ 
+      \tfrac{\alpha}{2} M^2 +  \alpha (C a_i + 1) R^2
+      +3C \left\| a_{i-1} M R \right\|  \bigr] \| a_i - a_{i-1} \| \\
+\end{align*}
+
+\paragraph{Case 2: Arguments are far.} 
+
+If $\|x-y\| \geq a_i - a_{i-1}$, we can again use the fact that the increments $a_i - a_{i-1}$, as well as the orthogonal matrix differences $\|W_i - W_{i-1}\|$ and $\|I - W_i\|$, are all $O(a_i - a_{i-1})$, but this time also use the global Lipschitz properties of $h$.
+
+We can rewrite the main term, substituting $S_k(z) = g_k(z) - g_{k-1}(z)$:
+\begin{align*}
+   \bigl(h_i(x) - W_i x\bigr) - \bigl(h_i(y) - W_i y\bigr) &= 
+      \left[g_i(u) - g_{i-1}(u) - (g_i(v) - g_{i-1}(v))\right]
+      + (I - W_i)\bigl[g_{i-1}(u) - g_{i-1}(v)\bigr] \\
+      &= S_i(u) + S_i(v) + (I - W_i)\bigl[g_{i-1}(u) - g_{i-1}(v)\bigr] = \\
+      &= S_i(u) - S_i(v) + (I - W_i) \bigl[x - y\bigr]
+\end{align*}
+
+We have already shown the term $I - W_i = O(a_i - a_{i-1})$. Now we will show the function $S_i(z)$ is Lipschitz with constant $O(a_i - a_{i-1})$. 
+
+Since
+   $ Dg_k(z)=W_k^{\!\top}\,D h(a_k W_k z)\,W_k, $
+we have
+\begin{align*}
+D S_i(z) &= W_i^{\!\top}\,D h(a_i W_i z)\,W_i - W_{i-1}^{\!\top}\,D h(a_{i-1} W_{i-1} z)\,W_{i-1},\\
+         &= W_i^{\!\top}\!\Bigl[D h(a_iW_i z)-D h(a_{i-1}W_{i-1} z)\Bigr]W_i
+             \;+\; \\ 
+         &+ \bigl(W_i^{\!\top}-W_{i-1}^{\!\top}\bigr)
+                  D h(a_{i-1}W_{i-1} z)\,W_{i-1}\\
+         &+\; W_i^{\!\top} D h(a_{i-1}W_{i-1} z)\bigl(W_i-W_{i-1}\bigr).
+\end{align*}
+Smoothness \eqref{eq:smoothness} and $\|z\|\le R$ give
+\begin{align*}
+   \|D h(a_iW_i z)-D h(a_{i-1}W_{i-1} z)\| &\;\le\;\alpha\bigl\|a_iW_i z-a_{i-1}W_{i-1} z\bigr\| < \alpha R \| a_i - a_{i-1}\| (C a_i + 1). \\
+\end{align*}
+
+Therefore, combining the bounds for the terms of $D S_i(z)$ and using the triangle inequality, we obtain
+\begin{align*}
+   \| D S_i(z) \| &\leq 
+   \| Dh(a_iW_i z)-D h(a_{i-1}W_{i-1} z)\| +
+   \|W_i^{\!\top}-W_{i-1}^{\!\top}\| \|D h(a_{i-1}W_{i-1} z)\| + \\
+   &\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad  
+   + \|Dh(a_{i-1}W_{i-1} z)\| \|W_i-W_{i-1}\| \\
+   &\leq \alpha R \| a_i - a_{i-1}\| (C a_i + 1) + 2C \| a_i - a_{i-1} \| \|D h(a_{i-1}W_{i-1} z)\| \\
+   &\leq \| a_i - a_{i-1} \| \left( \alpha R (C a_i + 1) + 2C \alpha a_{i-1} R  \right) = \\
+   &\leq \alpha R \| a_i - a_{i-1} \| \left( C a_i + 2C a_{i-1} + 1 \right).
+\end{align*}
+
+Now we can bound the Lipschitz constant of $S_i$:
+\begin{align*}
+   \|S_i(v) - S_i(u)\| &\leq \|D S_i(z)\| \cdot \|v - u\| \\
+   &\leq \alpha R \| a_i - a_{i-1} \| \left( C a_i + 2C a_{i-1} + 1 \right) \cdot \|v - u\| \\
+   &= \alpha R M^{-1} \| a_i - a_{i-1} \| \left( C a_i + 2C a_{i-1} + 1 \right) \cdot \|x - y\| \\
+\end{align*}
+
+Going back to the difference we need to bound, we have
+\begin{align*}
+   \bigl\|\bigl(h_i(x) - W_i x\bigr) - \bigl(h_i(y) - W_i y\bigr)\bigr\| &\leq 
+   \|S_i(u) - S_i(v)\| + \|I - W_i\| \cdot \|x - y\| \\
+   &< \| x - y \| \| a_i - a_{i-1} \| \cdot \Bigl[ 
+      \alpha R M^{-1} \left( C a_i + 2C a_{i-1} + 1 \right) + C \Bigr] \\
+\end{align*}
+
+\subsubsection{Combining the estimates}
+
+We have shown that for all $i=1,\ldots,m$:
+
+\begin{align*}
+   \| h_i - W_i \|_L \leq  \| a_i - a_{i-1} \| \cdot \max \{ 
+      &\tfrac{\alpha}{2} M^2 +  \alpha (C a_i + 1) R^2 +3C \left\| a_{i-1} M R \right\|, \\
+      &\alpha R M^{-1} \left( C a_i + 2C a_{i-1} + 1 \right) + C \} \\
+      \leq \| a_i - a_{i-1} \| \cdot \max \{
+      &\tfrac{\alpha}{2} M^2 +  \alpha (C + 1) R^2 +3C M R, \\
+      &\alpha R M^{-1} \left( 3C + 1 \right) + C \}.
+\end{align*}
+
+The choice of $a_i = (1-c)^{m-i}$ guarantees $a_i - a_{i-1} = O\left(\frac{\log m}{m}\right)$, 
+which implies that $\| h_i - W_i \|_L = O\left(\frac{\log m}{m}\right)$ for all $i=1,\ldots,m$.  
+
+Finally, we can conclude that the composition of $h_m\circ h_{m-1}\circ\cdots\circ h_1$ converges to $h$ in the sense of the theorem.
+
+\end{proof}  
+
+\subsection{Optimality Conditions via Zero Fréchet Derivatives}
+
+\textbf{NOTE: Again reference to \cite{bartlett2018representingsmoothfunctionscompositions}}
+
+\subsection{Analyzing the convergence of orthogonal connections during training}
+
+\textbf{TODO: Refer to the papers where authors show singular vectors of consecutive layers converge to each other.}
+  
+\section{Empirical results}
+
+Training Cifar10, Cifar100 doesn't show any difference.
+
+Training on synthetic data works sometimes, as seen on Figure \ref{fig:orth_residuals}.
+
+\begin{figure}[h]
+   \centering
+   \includegraphics[width=0.7\textwidth]{orth_residuals.png}
+   \caption{Residuals of orthogonal skip connections during training.}
+   \label{fig:orth_residuals}
+\end{figure}
+
+% Bibliography
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
+
+
