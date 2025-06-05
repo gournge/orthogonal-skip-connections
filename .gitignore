@@ -8,3 +8,11 @@ wandb/*
 *.log
 outputs
 .venv
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.synctex.gz
+paper/*.toc

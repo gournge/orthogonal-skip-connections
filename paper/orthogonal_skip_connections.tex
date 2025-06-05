@@ -499,16 +499,23 @@ Finally, we can conclude that the composition of $h_m\circ h_{m-1}\circ\cdots\ci
   
 \section{Empirical results}
 
-Training Cifar10, Cifar100 doesn't show any difference.
-
-Training on synthetic data works sometimes, as seen on Figure \ref{fig:orth_residuals}.
-
 \begin{figure}[h]
    \centering
-   \includegraphics[width=0.7\textwidth]{orth_residuals.png}
-   \caption{Residuals of orthogonal skip connections during training.}
-   \label{fig:orth_residuals}
+   \begin{minipage}[c]{0.48\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{residual_blocks_synthetic_comparison.png}
+   \end{minipage}
+   \hfill
+   \begin{minipage}[c]{0.48\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{resnet18_cifar100_comparison.png}
+   \end{minipage}
+   \caption{Left: Comparison of residual blocks on synthetic data. Right: Comparison of ResNet-18 variants on CIFAR-100.}
+   \label{fig:comparison_plots}
 \end{figure}
+
+Training Cifar10, Cifar100 doesn't show any difference, as seen on Figure \ref{fig:comparison_plots}. However, training on synthetic data shows that orthogonal skip connections are better than residual blocks, as seen on the left plot of Figure \ref{fig:comparison_plots}.
+
 
 % Bibliography
 \bibliographystyle{plain}
