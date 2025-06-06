@@ -34,8 +34,9 @@ class FixedOrthogonalSkip(BaseSkip):
 
     def __init__(self, channels: int):
         super().__init__()
-        # Orthogonal transformation implemented as a frozen weight matrix
-        w = torch.eye(channels)
+        # Orthogonal transformation implemented as a frozen random orthogonal matrix
+        w = torch.empty(channels, channels)
+        nn.init.orthogonal_(w)
         self.weight = nn.Parameter(w, requires_grad=False)
 
     def forward(self, x):
