@@ -26,12 +26,12 @@ python -m orthogonal_skip_connections.experiments.run_experiments model.skip_kin
 ## Comparison of weight transformations on synthetic data
 
 ```bash
-python -m orthogonal_skip_connections.experiments.orth_residual_synthetic_data dataset=circles
+python -m orthogonal_skip_connections.experiments.orth_residual_synthetic_data dataset_type=circles
 ```
 
 ## TODO
 
-- [ ] Modularize synthetic data experiments and use hydra
+- [x] Modularize synthetic data experiments and use hydra
 - [ ] How valid is the construction introduced by Bartlett et al. (2018)? How often do models converge to it?
 - [ ] Explore ViT architectures
 - [ ] Explore the scheme of training where we first train the model with identity skip connections, then approximate each non-linear connection with an orthogonal connection and adjust the weights of non-linear connection.
