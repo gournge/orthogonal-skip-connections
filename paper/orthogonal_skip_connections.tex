@@ -33,7 +33,7 @@ Algorithms? Constructive algorithms in each layer.
 \usepackage{mathtools}  
 \usepackage{enumitem}  
 \usepackage{bm}  
-  
+
 \title{Orthogonal Skip Connections}  
 \author{Filip Morawiec}  
 \date{June 2025}
@@ -65,6 +65,21 @@ Algorithms? Constructive algorithms in each layer.
 \newpage
 
 \section{Introduction}
+
+Our main contribtions:
+\begin{itemize}
+   \item we show that under a certain mathematical construction, orthogonal skip connections converge to identity connections (as network depth increases);
+   \item we explore if the theoretical construction actually matches the trained model;
+   \item we explore alternative schemes of trainings that could make use of orthogonal skip connections;
+   \item we argue that orthogonal skip connections aren't a good replacemenet for identity skip connections
+\end{itemize}
+
+\section{Related works}
+
+This paper has already done it, but they claim the method works, but it is 1 percentage point better: https://arxiv.org/abs/1707.05974
+
+Recent paper with a different idea: https://arxiv.org/abs/2505.11881.
+
 
 \section{Theoretical considerations}
 
@@ -518,7 +533,7 @@ Training Cifar10, Cifar100 doesn't show any difference, as seen on Figure \ref{f
 
 
 % Bibliography
-\bibliographystyle{plain}
+\bibliographystyle{plainnat}
 \bibliography{references}
 
 \end{document}
