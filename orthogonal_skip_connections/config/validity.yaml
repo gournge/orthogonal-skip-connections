@@ -1,0 +1,16 @@
+# Synthetic experiments configuration
+seed: 0
+n_blocks: 3     # number of residual blocks
+epochs: 100
+lr: 0.01
+
+dataset:
+  # dataset type: moons | circles | blobs | classification
+  # dataset specific params can be extended as needed
+  batch_size: 128
+  dataset_type: blobs
+  noise: 0.7
+  factor: 0.5
+  n_samples: 1000         # number of samples
+  n_blobs: 100
+

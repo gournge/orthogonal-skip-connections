@@ -27,7 +27,7 @@ wandb:
 
 model:
   model_type: resnet18
-  skip_kind: learnable_orth
+  skip_kind: learnable_orth # identity | learnable_orth | fixed_orth | random
   update_rule: steepest
   update_rule_iters: 8
   

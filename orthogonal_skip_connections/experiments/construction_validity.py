@@ -12,35 +12,37 @@ from omegaconf import DictConfig
 
 # ---- Synthetic 2-D classification dataset ----
 
-def build_dataset(cfg):
+
+def build_dataset(cfg, seed):
     """Return tensors and dataloader for the chosen synthetic dataset."""
-    torch.manual_seed(cfg.seed)
-    np.random.seed(cfg.seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
     if cfg.dataset_type == "moons":
-        x, y = make_moons(n_samples=cfg.N, noise=cfg.noise, random_state=cfg.seed)
+        x, y = make_moons(n_samples=cfg.n_samples, noise=cfg.noise, random_state=seed)
     elif cfg.dataset_type == "circles":
         x, y = make_circles(
-            n_samples=cfg.N,
+            n_samples=cfg.n_samples,
             noise=cfg.noise,
             factor=cfg.factor,
-            random_state=cfg.seed,
+            random_state=seed,
         )
     elif cfg.dataset_type == "blobs":
         x, y = make_blobs(
-            n_samples=cfg.N,
-            centers=5,
-            cluster_std=1.0,
-            random_state=cfg.seed,
+            n_samples=cfg.n_samples,
+            centers=cfg.n_blobs,
+            cluster_std=100 * cfg.noise / cfg.n_blobs,
+            random_state=seed,
         )
+        y = (y >= (cfg.n_blobs // 2)).astype(np.float32)  # binary classification
     elif cfg.dataset_type == "classification":
         x, y = make_classification(
-            n_samples=cfg.N,
+            n_samples=cfg.n_samples,
             n_features=2,
             n_informative=2,
             n_redundant=0,
             n_clusters_per_class=1,
-            random_state=cfg.seed,
+            random_state=seed,
         )
     else:
         raise ValueError(f"Unknown dataset_type {cfg.dataset_type}")
@@ -56,19 +58,19 @@ def build_dataset(cfg):
 
 # ---- Building blocks ----
 class SmallMLP(nn.Module):
-    def __init__(self, in_dim=2, hidden=16, out_dim=2, scale=0.1):
+    def __init__(self, in_dim=2, hidden=32, out_dim=2):
         super().__init__()
-        self.fc1 = nn.Linear(in_dim, hidden)
-        self.fc2 = nn.Linear(hidden, out_dim)
-        # near-identity initialisation
-        nn.init.normal_(self.fc1.weight, std=scale)
-        nn.init.zeros_(self.fc1.bias)
-        nn.init.normal_(self.fc2.weight, std=scale)
-        nn.init.zeros_(self.fc2.bias)
-        print("SmallMLP initialized.")
+        self.net = nn.Sequential(
+            nn.Linear(in_dim, hidden),
+            nn.ReLU(),  # quicker to train than tanh
+            nn.Linear(hidden, out_dim),  # no final tanh; let the block
+        )  # add whatever it wants
+        nn.init.kaiming_normal_(self.net[0].weight, nonlinearity="relu")
+        nn.init.zeros_(self.net[0].bias)
+        nn.init.zeros_(self.net[2].bias)
 
     def forward(self, x):
-        return torch.tanh(self.fc2(torch.tanh(self.fc1(x))))
+        return self.net(x)
 
 
 class IdentityBlock(nn.Module):
@@ -118,7 +120,7 @@ class ResidualClassifier(nn.Module):
         return self.head(z).squeeze(-1)
 
 
-def train(model, loader, epochs, lr=1e-3):
+def train(model, loader, epochs, lr=1e-2):
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.BCEWithLogitsLoss()
     print(f"Training started for {epochs} epochs with learning rate {lr}.")
@@ -181,11 +183,11 @@ def run_experiment(cfg, X_tensor, y_tensor, loader):
 
 
 # ---- Grid morphing visualisation utilities ----
-def morph_grid(ax, transform, lim=2, step=0.5, n_samples=100):
+def morph_grid(ax, transform, lim=2, size=30, n_samples=100):
     """Draw morphed grid lines after applying `transform`."""
-    xs = np.arange(-lim, lim + 1e-9, step)
+    xs = np.arange(-lim, lim + 1e-9, 2 * lim / size)
     horizontal_gradient = np.linspace(0, 1, n_samples)
-    ys = np.arange(-lim, lim + 1e-9, step)
+    ys = np.arange(-lim, lim + 1e-9, 2 * lim / size)
     vertical_gradient = np.linspace(0, 1, n_samples)
     for x0 in xs:
         y_line = np.linspace(-lim, lim, n_samples)
@@ -217,8 +219,12 @@ def morph_grid(ax, transform, lim=2, step=0.5, n_samples=100):
 
 
 def plot_models(id_model, orth_model, x, y, n_blocks, out_file="orth_residuals.png"):
-    """Visualize learned transformations and decision boundaries."""
+    """Visualize learned transformations and classification regions."""
     fig, axes = plt.subplots(3, (n_blocks + 1), figsize=(3 * (n_blocks + 1), 9))
+    x_min, x_max = x[:, 0].min(), x[:, 0].max()
+    y_min, y_max = x[:, 1].min(), x[:, 1].max()
+
+    lim = max(x_max - x_min, y_max - y_min) / 2
 
     for j in range(n_blocks):
         blk = id_model.blocks[j]
@@ -228,7 +234,7 @@ def plot_models(id_model, orth_model, x, y, n_blocks, out_file="orth_residuals.p
                 pts = torch.tensor(points, dtype=torch.float32)
                 return (pts + b.f(pts)).numpy()
 
-        morph_grid(axes[0, j], t_id)
+        morph_grid(axes[0, j], t_id, lim=lim)
         axes[0, j].set_title(f"Identity block {j+1}")
 
     for j in range(n_blocks):
@@ -240,7 +246,7 @@ def plot_models(id_model, orth_model, x, y, n_blocks, out_file="orth_residuals.p
         def t_W(points, W=W):
             return points @ W.T
 
-        morph_grid(axes[1, j], t_W)
+        morph_grid(axes[1, j], t_W, lim=lim)
         axes[1, j].set_title(f"Orth W {j+1}")
 
         def t_f(points, b=blk):
@@ -248,45 +254,53 @@ def plot_models(id_model, orth_model, x, y, n_blocks, out_file="orth_residuals.p
                 pts = torch.tensor(points, dtype=torch.float32)
                 return (pts + b.f(pts)).numpy()
 
-        morph_grid(axes[2, j], t_f)
+        morph_grid(axes[2, j], t_f, lim=lim)
         axes[2, j].set_title(f"Orth f {j+1}")
 
-    x0 = x[y == 0]
-    x1 = x[y == 1]
-
-    kde0 = KernelDensity(bandwidth=0.2).fit(x0)
-    kde1 = KernelDensity(bandwidth=0.2).fit(x1)
-
-    xx, yy = np.meshgrid(np.linspace(-2.5, 3, 200), np.linspace(-2.5, 3, 200))
+    # Prepare grid for background classification visualization
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), np.linspace(y_min, y_max, 100))
     grid = np.c_[xx.ravel(), yy.ravel()]
+    grid_tensor = torch.tensor(grid, dtype=torch.float32)
 
-    log_dens0 = kde0.score_samples(grid)
-    log_dens1 = kde1.score_samples(grid)
-    Z_bayes = (log_dens1 - log_dens0).reshape(xx.shape)
-
+    # Identity model classification background
+    with torch.no_grad():
+        preds_id = (
+            (torch.sigmoid(id_model(grid_tensor)) > 0.5).numpy().reshape(xx.shape)
+        )
     ax_top = axes[0, -1]
     ax_top.cla()
-    ax_top.scatter(x[:, 0], x[:, 1], c=y, cmap="bwr", alpha=0.2, s=10)
-    ax_top.contour(
-        xx, yy, Z_bayes, levels=[0], colors="green", linewidths=2, linestyles="--"
+    ax_top.imshow(
+        preds_id,
+        extent=(xx.min(), xx.max(), yy.min(), yy.max()),
+        origin="lower",
+        cmap="bwr",
+        alpha=0.2,
+        aspect="auto",
     )
+    ax_top.scatter(
+        x[:, 0], x[:, 1], c=y, cmap="bwr", alpha=0.5, s=10, edgecolor="k", linewidth=0.2
+    )
+    ax_top.set_title("Identity: Classification regions")
 
+    # Orthogonal model classification background
     with torch.no_grad():
-        grid_tensor = torch.tensor(grid, dtype=torch.float32)
-        Z_id = id_model(grid_tensor).numpy().reshape(xx.shape)
-    ax_top.contour(xx, yy, Z_id, levels=[0], colors="black", linewidths=2)
-    ax_top.set_title("Identity: Bayes vs Learned")
-
+        preds_orth = (
+            (torch.sigmoid(orth_model(grid_tensor)) > 0.5).numpy().reshape(xx.shape)
+        )
     ax_mid = axes[1, -1]
     ax_mid.cla()
-    ax_mid.scatter(x[:, 0], x[:, 1], c=y, cmap="bwr", alpha=0.2, s=10)
-    with torch.no_grad():
-        Z_orth = orth_model(grid_tensor).numpy().reshape(xx.shape)
-    ax_mid.contour(
-        xx, yy, Z_bayes, levels=[0], colors="green", linewidths=2, linestyles="--"
+    ax_mid.imshow(
+        preds_orth,
+        extent=(xx.min(), xx.max(), yy.min(), yy.max()),
+        origin="lower",
+        cmap="bwr",
+        alpha=0.2,
+        aspect="auto",
     )
-    ax_mid.contour(xx, yy, Z_orth, levels=[0], colors="black", linewidths=2)
-    ax_mid.set_title("Orthogonal: Bayes vs Learned")
+    ax_mid.scatter(
+        x[:, 0], x[:, 1], c=y, cmap="bwr", alpha=0.5, s=10, edgecolor="k", linewidth=0.2
+    )
+    ax_mid.set_title("Orthogonal: Classification regions")
 
     axes[-1, -1].axis("off")
     plt.tight_layout()
@@ -294,9 +308,9 @@ def plot_models(id_model, orth_model, x, y, n_blocks, out_file="orth_residuals.p
     print(f"Visualization saved as '{out_file}'.")
 
 
-@hydra.main(version_base="1.3", config_path="../config", config_name="synthetic")
+@hydra.main(version_base="1.3", config_path="../config", config_name="validity")
 def main(cfg: DictConfig):
-    x, y, X_tensor, y_tensor, loader = build_dataset(cfg)
+    x, y, X_tensor, y_tensor, loader = build_dataset(cfg.dataset, cfg.seed)
     id_model, orth_model = run_experiment(cfg, X_tensor, y_tensor, loader)
     plot_models(id_model, orth_model, x, y, cfg.n_blocks)
 
