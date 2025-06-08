@@ -42,11 +42,10 @@ uv run python -m orthogonal_skip_connections.experiments.orth_to_id
   - Update: we observed matrices didn't converge to identity - both in a synthetic data setting and in a CIFAR-100 training setting. Hence the model is not really valid, suggesting a more general construction than presented here - weight matrices don't need to converge to identity.
 
 - [ ] Explore the scheme of training where we first train the model with identity skip connections, then approximate each non-linear connection with an orthogonal connection and adjust the weights of non-linear connection.
-
-- [ ] See what happens when we increase the dimensions further in `orthogonal_skip_connections.experiments.orth_to_id`. Currently we only saw it in 2D and 3D and binary classification. I couldn't construct a general dataset in which the model didn't achieve 100% immediately on high-dimensional data.
-
-- [ ] Explore ViT architectures
 - [ ] Literature review of related papers
+  - [ ] What is the effect of orthogonal residual updates? (new paper)
+- [ ] See what happens when we increase the dimensions further in `orthogonal_skip_connections.experiments.orth_to_id`. Currently we only saw it in 2D and 3D and binary classification. I couldn't construct a general dataset in which the model didn't achieve 100% immediately on high-dimensional data.
+- [ ] Explore ViT architectures
 
 ## Citation
 If you use this codebase in your research, please cite it:
