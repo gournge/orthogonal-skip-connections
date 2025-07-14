@@ -1,6 +1,6 @@
-# orthogonal-skip-connections
+# orthogonal-skip-connections (OrthResNet)
 
-A research codebase that explores the idea of replacing skip connections in ResNets to orthogonal matrices. We use the term *OrthResNet* throughout the project.
+A research codebase that explores the idea of replacing skip connections in ResNets to orthogonal matrices.
 
 Inside the [paper/orthogonal_skip_connections.pdf](paper/orthogonal_skip_connections.pdf) we show a mathematical construction of OrthResNet, that shares many convergence properties of the original ResNet architecture, with more degrees of freedom:
 
