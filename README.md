@@ -1,6 +1,14 @@
-# Orth-ResNet 🌀
+# orthogonal-skip-connections
 
-A modular research codebase to **investigate orthogonal skip-connections** in ResNet-style architectures.  Supports *fixed*, *learnable*, *partially orthogonal* and *random* projections, with out-of-the-box CIFAR-10/100 experiments and Weights-and-Biases tracking.
+A research codebase that explores the idea of replacing skip connections in ResNets to orthogonal matrices. We use the term *OrthResNet* throughout the project.
+
+Inside the [paper/orthogonal_skip_connections.pdf](paper/orthogonal_skip_connections.pdf) we show a mathematical construction of OrthResNet, that shares many convergence properties of the original ResNet architecture, with more degrees of freedom:
+
+![alt text](paper/theorem.png)
+
+The purpose of this codebase is to evaluate if this theoretical result is actually useful: initial experiments show that doesn't work that well in practice, contradicting previous investigations presented in: [Orthogonal and Idempotent Transformations for Learning Deep Neural Networks
+](https://arxiv.org/abs/1707.05974). 
+
 
 ## Quick-start
 ```bash

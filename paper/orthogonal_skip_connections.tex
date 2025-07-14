@@ -1,32 +1,32 @@
-\documentclass[11pt]{article}  
+\documentclass[11pt]{article}
 \iffalse
---------------------------------------------
+% --------------------------------------------
 
-To do:
-JMLR logins: peter.bartlett, stevenneilevans
+% To do:
+% JMLR logins: peter.bartlett, stevenneilevans
       
 
-To consider:
+% To consider:
 
-What about boosting smoothness through depth in more generality --
-Sobolev and/or Besov spaces?  
+% What about boosting smoothness through depth in more generality --
+% Sobolev and/or Besov spaces?  
 
-What about not invertible? e.g., lower output dimension?
+% What about not invertible? e.g., lower output dimension?
 
-Neater analysis of ||h-h*||.
+% Neater analysis of ||h-h*||.
 
-Dispensing with differentiability of $h_i$: denseness.
+% Dispensing with differentiability of $h_i$: denseness.
 
-Is smoothness of h necessary?
+% Is smoothness of h necessary?
 
-Lower bounds on best decomposition? Especially in terms of
-alpha,M,R,...
+% Lower bounds on best decomposition? Especially in terms of
+% alpha,M,R,...
 
-What about loss other than quadratic?
+% What about loss other than quadratic?
 
-Optimization? What does lower bound on gradient say about progress?
+% Optimization? What does lower bound on gradient say about progress?
 
-Algorithms? Constructive algorithms in each layer.
+% Algorithms? Constructive algorithms in each layer.
 \fi
 \usepackage{amsmath, amssymb, amsthm}  
 \usepackage{fullpage}  
@@ -123,7 +123,7 @@ for all $x\in\calX$,
 \]
 and, on $h_{i-1}\circ\cdots \circ h_1(\calX)$, the following terms decrease in $O\left(\frac{\log m}{m}\right)$ rate:  $\|h_i-W_i\|_L, \ \| I - W_i\|$ for $i=1,\ldots,m$.
 
-\textbf{TODO: We can probably replace the $\log{m}/m$ term by choosing any sequence in $(0, 1)$ that converges to $0$}
+% \textbf{TODO: We can probably replace the $\log{m}/m$ term by choosing any sequence in $(0, 1)$ that converges to $0$}
 
 \end{theorem}  
   
@@ -579,7 +579,7 @@ Similarly for training on synthetic data, as seen on the left plot of Figure \re
       \includegraphics[width=\textwidth]{synthetic_pred_dim2_nc2.png}
    \end{minipage}
    \caption{Trajectory of orthogonal skip connections on a synthetic dataset. \emph{Left}: Trajectories of different blocks. \emph{Right}: Example dataset and predictions.}
-   \label{fig:orthogonal_skip_connections_smoothness}
+   \label{fig:orthogonal_skip_connections_smoothness_synthetic}
 \end{figure}
 
 It appears that the main theorem doesn't hold as much
