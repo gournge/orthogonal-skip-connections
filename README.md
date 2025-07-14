@@ -43,7 +43,7 @@ uv run python -m orthogonal_skip_connections.experiments.orth_residual_synthetic
 uv run python -m orthogonal_skip_connections.experiments.orth_to_id
 ```
 
-## TODO
+<!-- ## TODO
 
 - [x] Modularize synthetic data experiments and use hydra
 - [x] How valid is the construction introduced by Bartlett et al. (2018)? How often do models converge to it?
@@ -53,7 +53,7 @@ uv run python -m orthogonal_skip_connections.experiments.orth_to_id
 - [ ] Literature review of related papers
   - [ ] What is the effect of orthogonal residual updates? (new paper)
 - [ ] See what happens when we increase the dimensions further in `orthogonal_skip_connections.experiments.orth_to_id`. Currently we only saw it in 2D and 3D and binary classification. I couldn't construct a general dataset in which the model didn't achieve 100% immediately on high-dimensional data.
-- [ ] Explore ViT architectures
+- [ ] Explore ViT architectures -->
 
 ## Citation
 If you use this codebase in your research, please cite it:
