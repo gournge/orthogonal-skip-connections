@@ -29,6 +29,17 @@ class IdentitySkip(BaseSkip):
         return x
 
 
+class ZeroSkip(BaseSkip):
+    """No-skip variant: always returns zeros with the same shape as input."""
+
+    def __init__(self, channels: int, **kwargs):
+        super().__init__()
+        # channels is unused, but required for interface compatibility
+
+    def forward(self, x):
+        return torch.zeros_like(x)
+
+
 class FixedOrthogonalSkip(BaseSkip):
     """Frozen orthogonal projection implemented as 1×1 conv with orthogonal matrix W."""
 
@@ -95,6 +106,7 @@ class RandomSkip(BaseSkip):
 # Registry --------------------------------------------------------------------
 _REGISTRY = {
     "identity": IdentitySkip,
+    "zero": ZeroSkip,
     "fixed_orth": FixedOrthogonalSkip,
     "learnable_orth": LearnableOrthogonalSkip,
     "random": RandomSkip,

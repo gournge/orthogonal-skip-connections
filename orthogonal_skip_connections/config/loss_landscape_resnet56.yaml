@@ -1,0 +1,42 @@
+seed: 42
+device: auto  # auto | cpu | cuda
+
+runtime:
+  use_cached: false
+  cached_npz_path: outputs/loss_landscape_resnet56/resnet56_loss_landscape_data.npz
+
+dataset: cifar10  # cifar10 | cifar100
+data_root: ~/.data
+batch_size: 256
+eval_batch_size: 512
+num_workers: 4
+
+optimizer:
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 5e-4
+
+training:
+  epochs: 20
+  label_smoothing: 0.0
+  max_train_batches: 0  # 0 means no limit
+
+model:
+  update_rule: steepest
+  update_rule_iters: 8
+
+landscape:
+  radius: 1.0
+  steps: 21
+  max_eval_batches: 10
+  eval_subset_size: 2048
+
+plot:
+  cmap: viridis
+  elev: 35
+  azim: -55
+  dpi: 180
+  output_filename: resnet56_loss_landscape_3d.png
+  clip_top_percent: 5.0
+
+output_dir: outputs/loss_landscape_resnet56

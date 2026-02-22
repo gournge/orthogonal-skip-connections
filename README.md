@@ -31,6 +31,17 @@ uv run python -m orthogonal_skip_connections.experiments.run_experiments model.s
 uv run python -m orthogonal_skip_connections.experiments.run_experiments model.skip_kind=identity dataset=cifar100
 ```
 
+### ResNet56 3D Loss Landscape Comparison
+
+Compares three variants using filter-wise normalized random directions:
+- ResNet56 without skip connections
+- ResNet56 with identity skip connections
+- ResNet56 with learnable orthogonal skip connections
+
+```bash
+uv run python -m orthogonal_skip_connections.experiments.loss_landscape_resnet56
+```
+
 ## Comparison of weight transformations on synthetic data
 
 ```bash

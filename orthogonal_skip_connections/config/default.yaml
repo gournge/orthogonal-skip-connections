@@ -26,8 +26,8 @@ wandb:
   infer_name: true
 
 model:
-  model_type: resnet18
-  skip_kind: learnable_orth # identity | learnable_orth | fixed_orth | random
+  model_type: resnet18 # resnet18 | resnet34 | resnet50 | resnet56
+  skip_kind: learnable_orth # zero | identity | learnable_orth | fixed_orth | random
   update_rule: steepest
   update_rule_iters: 8
   
